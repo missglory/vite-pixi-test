@@ -7,11 +7,10 @@ document.body.appendChild(app.view);
 
 class Ruler extends PIXI.Container {
 
-  children: PIXI.BitmapText[] = [];
   constructor(parent, onDragStart, onDragEnd, onDragMove, num = 5) {
     super();
     parent.stage.addChild(this);
-    let h = 100;
+    let h = 0;
     for (let i = 0; i < num; i++) {
       const child = new PIXI.Text('1802.21', new PIXI.TextStyle({ fontFamily: 'JetBrains Mono', fontSize: 20 }));
       // PIXI.Assets.load('JetBrainsMonoNerdFont-Medium.ttf').then(() => {
@@ -23,7 +22,6 @@ class Ruler extends PIXI.Container {
       //   // color: '#ffffff'
       // },
       // );
-      this.children.push(child);
       child.y = h;
       child.x = 50;
       child.cursor = 'pointer';
@@ -69,7 +67,6 @@ window.WebFontConfig = {
 
 
 function init() {
-
     let dragTarget: PIXI.Sprite[] = [];
     app.stage.eventMode = 'static';
     app.stage.hitArea = app.screen;
@@ -77,10 +74,10 @@ function init() {
     app.stage.on('pointerupoutside', onDragEnd);
 
     function onDragMove(event) {
-      if (dragTarget.length > 0) {
+      // if (dragTarget.length > 0) {
         // dragTarget.parent.toLocal(event.global, null, dragTarget.position);
-        dragTarget.forEach(d => { d.toLocal(event.global, undefined, d.position); });
-      }
+        dragTarget.forEach(d => { d.parent.toLocal(new PIXI.Point(0, event.global.y), undefined, d.position); });
+      // }
     }
 
     function onDragStart() {
@@ -90,18 +87,19 @@ function init() {
       // this.data = event.data;
 
       this.alpha = 0.5;
-      dragTarget = this;
+      dragTarget = [this.parent];
       app.stage.on('pointermove', onDragMove);
     }
 
     function onDragEnd() {
       if (dragTarget) {
         app.stage.off('pointermove', onDragMove);
-        dragTarget.alpha = 1;
-        dragTarget = null;
+        dragTarget.forEach(d => { d.alpha = 1; });
+        dragTarget = [];
       }
     }
     const ruler = new Ruler(app, onDragStart, onDragEnd, onDragMove, 5);
+    ruler.y = 50;
 }
 
 
