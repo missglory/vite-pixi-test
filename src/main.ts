@@ -7,12 +7,15 @@ document.body.appendChild(app.view);
 
 class Ruler extends PIXI.Container {
 
-  constructor(parent, onDragStart, onDragEnd, onDragMove, num = 5) {
+  constructor(parent, onDragStart, onDragEnd, onDragMove, topOffset = 50, botOffset = 50) {
     super();
     parent.stage.addChild(this);
+    this.y = topOffset;
     let h = 0;
-    for (let i = 0; i < num; i++) {
-      const child = new PIXI.Text('1802.21', new PIXI.TextStyle({ fontFamily: 'JetBrains Mono', fontSize: 20 }));
+    const fontSize = 13;
+    const height = window.innerHeight - topOffset - botOffset;
+    for (let i = 0; i < height / fontSize; i++) {
+      const child = new PIXI.Text((182.01 + i / 100).toFixed(3), new PIXI.TextStyle({ fontFamily: 'JetBrains Mono', fontSize: fontSize }));
       // PIXI.Assets.load('JetBrainsMonoNerdFont-Medium.ttf').then(() => {
       // const child = new PIXI.Text(
       //   'bitmap fonts are supported!\nWoo yay!', {
@@ -65,6 +68,7 @@ window.WebFontConfig = {
   s.parentNode.insertBefore(wf, s);
 }());
 
+let lastPos = new PIXI.Point();
 
 function init() {
     let dragTarget: PIXI.Sprite[] = [];
@@ -76,11 +80,15 @@ function init() {
     function onDragMove(event) {
       // if (dragTarget.length > 0) {
         // dragTarget.parent.toLocal(event.global, null, dragTarget.position);
-        dragTarget.forEach(d => { d.parent.toLocal(new PIXI.Point(0, event.global.y), undefined, d.position); });
+        dragTarget.forEach(d => {
+          if (d.parent instanceof PIXI.Container) {
+            d.parent.toLocal(new PIXI.Point(0, event.global.y - lastPos.y), undefined, d.position);
+          }
+        });
       // }
     }
 
-    function onDragStart() {
+    function onDragStart(event) {
       // store a reference to the data
       // the reason for this is because of multitouch
       // we want to track the movement of this particular touch
@@ -89,17 +97,19 @@ function init() {
       this.alpha = 0.5;
       dragTarget = [this.parent];
       app.stage.on('pointermove', onDragMove);
+      lastPos = new PIXI.Point(event.global.x, event.global.y);
     }
 
     function onDragEnd() {
       if (dragTarget) {
         app.stage.off('pointermove', onDragMove);
+        drag = false;
         dragTarget.forEach(d => { d.alpha = 1; });
         dragTarget = [];
       }
+      lastPos = new PIXI.Point();
     }
-    const ruler = new Ruler(app, onDragStart, onDragEnd, onDragMove, 5);
-    ruler.y = 50;
+    const ruler = new Ruler(app, onDragStart, onDragEnd, onDragMove,  50, 50);
 }
 
 
