@@ -11,16 +11,16 @@ class Ruler {
   constructor(parent, onDragStart, onDragEnd, onDragMove, num = 5) {
     let h = 100;
     for (let i = 0; i < num; i++) {
-      // const child = new PIXI.Text('Crosterian.woff2', new PIXI.TextStyle({ fontFamily: 'Crosterian', fontSize: 50 }));
+      const child = new PIXI.Text('Crosterian.woff2', new PIXI.TextStyle({ fontFamily: 'JetBrains Mono', fontSize: 20 }));
       // PIXI.Assets.load('JetBrainsMonoNerdFont-Medium.ttf').then(() => {
-      const child = new PIXI.Text(
-        'bitmap fonts are supported!\nWoo yay!', {
-        fontName: 'Snippet',
-        fontSize: 25,
-        align: 'left',
-        // color: '#ffffff'
-      },
-      );
+      // const child = new PIXI.Text(
+      //   'bitmap fonts are supported!\nWoo yay!', {
+      //   fontName: 'Lineal',
+      //   fontSize: 25,
+      //   align: 'left',
+      //   // color: '#ffffff'
+      // },
+      // );
       this.children.push(child);
       child.y = h;
       child.x = 50;
@@ -49,7 +49,7 @@ class Ruler {
 // Load them google fonts before starting...
 window.WebFontConfig = {
   google: {
-    families: ['Snippet'],
+    families: ['JetBrains Mono'],
   },
   active() {
     init();
