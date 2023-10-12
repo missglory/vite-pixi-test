@@ -14,8 +14,9 @@ class Ruler extends PIXI.Container {
   period = 0.1;
   startValue = 0.01;
   fontSize = 26;
-  selectedChildren = [];
+  selectedChildren = new PIXI.Point(-1, -1);
   microshift = new PIXI.Point(0, 0);
+  shiftMask = new PIXI.Point(0, 0);
   constructor(
     parent,
     onDragStart,
@@ -27,7 +28,8 @@ class Ruler extends PIXI.Container {
     startValue = 0.01,
     period = 0.1,
     endOffset = new PIXI.Point(0, 0),
-    fontSize = 26
+    fontSize = 26,
+    shiftMask = new PIXI.Point(1, 1)
   ) {
     super();
 
@@ -46,6 +48,7 @@ class Ruler extends PIXI.Container {
     this.fontSize = fontSize;
     this.startValue = startValue;
     this.period = period;
+    this.shiftMask = shiftMask;
     // const mainDim = vertical ? window.innerHeight - initOffset.y - endOffset : window.innerWidth - initOffset.x - endOffset;
     // for (let i = 0; i < mainDim / fontSize; i++) {
     // const child = new PIXI.Text((182.01 + i / 100).toFixed(3), new PIXI.TextStyle({ fontFamily: 'JetBrains Mono', fontSize: fontSize }));
@@ -79,14 +82,16 @@ class Ruler extends PIXI.Container {
   // }
 
   toLocal(...params: any[]) {
-    // params[0].y += this.y;
-    // params[0].x += this.x;
-    // super.toLocal(...params);
+    params[0].x *= this.shiftMask.x;
+    params[0].y *= this.shiftMask.y;
+
+    // Pass the modified argument to this.parent.toLocal
+    // this.parent.toLocal(modifiedFirstArg, ...params.slice(1));
     this.parent.toLocal(...params);
     // this.children.forEach(child => {
-      // child.x = params[0];
-      // child.y = params[1];
-      // child.toLocal(...params);
+    // child.x = params[0];
+    // child.y = params[1];
+    // child.toLocal(...params);
     // });
 
     this.fill();
@@ -98,7 +103,7 @@ class Ruler extends PIXI.Container {
     let last = this.children.at(-1) ?? null;
     if (last === null) { return; }
     while ((this.vertical && last.y + this.y < this.endOffset.y - this.offset.y)
-      || (!this.vertical  && last.x + this.x < this.endOffset.x - this.offset.x)
+      || (!this.vertical && last.x + this.x < this.endOffset.x - this.offset.x)
     ) {
       this.add();
       last = this.children.at(-1) ?? null;
@@ -106,7 +111,7 @@ class Ruler extends PIXI.Container {
     }
 
     while ((this.vertical && last.y + this.y > this.endOffset.y)
-      || (!this.vertical  && last.x + this.x > this.endOffset.x)
+      || (!this.vertical && last.x + this.x > this.endOffset.x)
     ) {
       this.remove(-1);
       last = this.children.at(-1) ?? null;
@@ -115,7 +120,7 @@ class Ruler extends PIXI.Container {
 
     last = this.children.at(0)!;
     while ((this.vertical && last.y + this.y > this.offset.y)
-      || (!this.vertical  && last.x + this.x > this.offset.x)
+      || (!this.vertical && last.x + this.x > this.offset.x)
     ) {
       this.add(false);
       last = this.children.at(0) ?? null;
@@ -123,7 +128,7 @@ class Ruler extends PIXI.Container {
     }
 
     while ((this.vertical && last.y + this.y < 0)
-      || (!this.vertical  && last.x + this.x < 0)
+      || (!this.vertical && last.x + this.x < 0)
     ) {
       this.remove(0);
       last = this.children.at(0) ?? null;
@@ -206,21 +211,16 @@ function init() {
   app.stage.on('pointerup', onDragEnd);
   app.stage.on('pointerupoutside', onDragEnd);
 
-  function onDragMoveV(event) {
+  function onDragMove(event) {
     dragTarget.forEach(d => {
       if (d.parent instanceof PIXI.Container) {
         // console.log(d.selectedChildren)
-        d.toLocal(new PIXI.Point(0, event.global.y - d.selectedChildren[0] * d.offset.y - d.microshift.y), undefined, d.position);
-      }
-    });
-  }
-
-  function onDragMoveH(event) {
-    dragTarget.forEach(d => {
-      if (d.parent instanceof PIXI.Container) {
-        // console.log(d.selectedChildren)
-        d.toLocal(new PIXI.Point(event.global.x - d.selectedChildren[0] * d.offset.x - d.microshift.x, 0), undefined, d.position);
-        // d.toLocal()
+        d.toLocal(new PIXI.Point(
+          event.global.x - d.selectedChildren.x * d.offset.x - d.microshift.x,
+          event.global.y - d.selectedChildren.y * d.offset.y - d.microshift.y
+        ),
+          undefined, d.position
+        );
       }
     });
   }
@@ -228,7 +228,7 @@ function init() {
   function onDragStartV(event) {
     for (let i = 0; i < this.children.length; i++) {
       if (i == this.children.length - 1 || this.children[i].y < event.global.y - this.y && this.children[i + 1].y > event.global.y - this.y) {
-        this.selectedChildren = [ i ];
+        this.selectedChildren.x = i;
         this.microshift.y = event.global.y - this.children[i].y - this.y;
         break;
       }
@@ -236,14 +236,14 @@ function init() {
 
     this.alpha = 0.5;
     dragTarget = [this];
-    app.stage.on('pointermove', onDragMoveV);
+    app.stage.on('pointermove', onDragMove);
     lastPos = new PIXI.Point(event.global.x, event.global.y);
   }
 
   function onDragStartH(event) {
     for (let i = 0; i < this.children.length; i++) {
       if (i == this.children.length - 1 || this.children[i].x < event.global.x - this.x && this.children[i + 1].x > event.global.x - this.x) {
-        this.selectedChildren = [ i ];
+        this.selectedChildren.y = i;
         this.microshift.x = event.global.x - this.children[i].x - this.x;
         break;
       }
@@ -251,23 +251,30 @@ function init() {
 
     this.alpha = 0.5;
     dragTarget = [this];
-    app.stage.on('pointermove', onDragMoveH);
+    app.stage.on('pointermove', onDragMove);
     lastPos = new PIXI.Point(event.global.x, event.global.y);
   }
 
   function onDragEnd() {
     this.alpha = 1;
     if (dragTarget) {
-      app.stage.off('pointermove', onDragMoveV);
+      app.stage.off('pointermove', onDragMove);
       dragTarget.forEach(d => { d.alpha = 1; });
       dragTarget = [];
       lastPos = new PIXI.Point();
     }
   }
-  const ruler = new Ruler(app, onDragStartH, onDragEnd, onDragMoveH, false,
-    new PIXI.Point(200, 0), new PIXI.Point(70, 5), 0.02, 0.2, new PIXI.Point(800, 0));
-  const rulerH = new Ruler(app, onDragStartV, onDragEnd, onDragMoveV, true,
-    new PIXI.Point(0, 200), new PIXI.Point(3, 26), 0.1, 0.1, new PIXI.Point(0, 800));
+  const ruler = new Ruler(app, onDragStartH, onDragEnd, onDragMove, false,
+    new PIXI.Point(200, 0), new PIXI.Point(70, 5), 0.02, 0.2,
+    new PIXI.Point(800, 0),
+    26,
+    new PIXI.Point(1, 0));
+  const rulerH = new Ruler(app, onDragStartV, onDragEnd, onDragMove, true,
+    new PIXI.Point(0, 200),
+    new PIXI.Point(3, 26), 0.1, 0.1,
+    new PIXI.Point(0, 800),
+    26,
+    new PIXI.Point(0, 1));
 }
 
 
