@@ -55,59 +55,18 @@ class Ruler extends PIXI.Sprite {
     this.endValue = startValue;
     this.period = period;
     this.shiftMask = shiftMask;
-    // const mainDim = vertical ? window.innerHeight - initOffset.y - endOffset : window.innerWidth - initOffset.x - endOffset;
-    // for (let i = 0; i < mainDim / fontSize; i++) {
-    // const child = new PIXI.Text((182.01 + i / 100).toFixed(3), new PIXI.TextStyle({ fontFamily: 'JetBrains Mono', fontSize: fontSize }));
-    // PIXI.Assets.load('JetBrainsMonoNerdFont-Medium.ttf').then(() => {
-    // const child = new PIXI.Text(
-    //   'bitmap fonts are supported!\nWoo yay!', {
-    //   fontName: 'Lineal',
-    //   fontSize: 25,
-    //   align: 'left',
-    //   // color: '#ffffff'
-    // },
-    // );
-    // child.x = offset.x;
-    // child.y = offset.y;
-    // offset.x += savedOffset.x;
-    // offset.y += savedOffset.y;
-    // child.cursor = 'pointer';
-    // child.eventMode = 'static';
-    // child.on('pointerdown', onDragStart, child);
-    // child.on('pointerup', onDragEnd);
-    // child.on('pointeroutside', onDragEnd);
-    // child.scale.set(0.5);
-    // this.addChild(child);
-    // this.add();
-    // }
-    // this.toLocal(new PIXI.Point(), undefined, this.position);
-    // this.add();
-    // this.add();
+
     this.fill();
   }
-  // }
 
   toLocal(...params: any[]) {
     params[0].x *= this.shiftMask.x;
     params[0].y *= this.shiftMask.y;
-
-    // console.log("loLocal")
-    // console.log(this.x, this.y, params[0].x, params[0].y)
-    // console.log(this.parent);
-    // Pass the modified argument to this.parent.toLocal
-    // this.parent.toLocal(modifiedFirstArg, ...params.slice(1));
     this.parent.toLocal(...params);
-    // this.children.forEach(child => {
-    // child.x = params[0];
-    // child.y = params[1];
-    // child.toLocal(...params);
-    // });
-
     this.fill();
   }
 
   fill() {
-    // console.log("fill")
     while (this.children.length === 0) { this.add(); }
     let last = this.children.at(-1) ?? null;
     if (last === null) { return; }
@@ -210,6 +169,7 @@ class Ruler extends PIXI.Sprite {
       console.log("levels : ", this.levels.length);
       const newChild = new PIXI.Text(this.makeLabel(this.startValue), new PIXI.TextStyle({ fontFamily: 'JetBrains Mono', fontSize: this.fontSize, fill: this.vertical ? "#83cccc" : "#cccc83" }));
       newChild.scale.set(0.5);
+      newChild.zIndex = 1;
       // newChild.x = this.initOffset.x;
       // newChild.y = this.initOffset.y;
       this.addChild(newChild);
@@ -260,90 +220,63 @@ async function init() {
   app.stage.on('pointerup', onDragEndRuler);
   app.stage.on('pointerupoutside', onDragEndRuler);
 
-  function onDragMoveRuler(event) {
-    dragTarget.forEach(d => {
-      if (d.parent instanceof PIXI.Container) {
-        // console.log(d.selectedChildren)
-        d.toLocal(new PIXI.Point(
-          event.global.x - d.microshift.x,
-          event.global.y - d.microshift.y
-        ),
-          undefined, d.position
-        );
-      }
-    });
-  }
-
-  function onDragStartV(event) {
-
-    for (let i = 0; i < this.children.length; i++) {
-      if (i == this.children.length - 1 || this.children[i].y < event.global.y - this.y && this.children[i + 1].y > event.global.y - this.y) {
-        this.selectedChildren.x = i;
-        this.microshift.y = event.global.y - this.y;
-        break;
-      }
-    }
-
-    this.alpha = 0.5;
-    dragTarget = this.parent.children;
-    app.stage.on('pointermove', onDragMoveRuler);
-    lastPos = new PIXI.Point(event.global.x, event.global.y);
-  }
-
-  function onDragStartH(event) {
-    for (let i = 0; i < this.children.length; i++) {
-      if (i == this.children.length - 1 || this.children[i].x < event.global.x - this.x && this.children[i + 1].x > event.global.x - this.x) {
-        this.selectedChildren.y = i;
-        this.microshift.x = event.global.x - this.x;
-        break;
-      }
-    }
-
-    this.alpha = 0.5;
-    dragTarget = this.parent.children;
-    app.stage.on('pointermove', onDragMoveRuler);
-    lastPos = new PIXI.Point(event.global.x, event.global.y);
-  }
-
   function onDragMove(event) {
     dragTarget.forEach(d => {
       if (d.parent instanceof PIXI.Container) {
-        // console.log(d.selectedChildren)
         d.toLocal(new PIXI.Point(
           event.global.x - d.microshift.x,
           event.global.y - d.microshift.y
         ),
-          undefined, d.position
+          d.parent, d.position
         );
       }
+      console.log(d.microshift.x, d.microshift.y)
+      console.log(d);
     });
   }
 
   function onDragStart(event) {
     this.alpha = 0.5;
     dragTarget = this.parent.children;
-    console.log("Set microshift: ");
-    console.log(this.microshift.x, this.microshift.y);
-    const c0 = this.children[6];
-    console.log(event.global.x, event.global.y, this.x, this.y, this.children.length, c0.x, c0.y, c0.height, c0.width);
+    dragTarget.forEach(t => {
+      t.microshift.x = event.global.x - t.x;
+      t.microshift.y = event.global.y - t.y;
+    });
     this.microshift.x = event.global.x - this.x;
     this.microshift.y = event.global.y - this.y;
     app.stage.on('pointermove', onDragMove);
+    // console.log("onDragStart");
+    // console.log(this);
     lastPos = new PIXI.Point(event.global.x, event.global.y);
-  }
 
+    for (let i = 0; i < this.children.length; i++) {
+      const c = this.children[i];
+      if (
+        i == this.children.length - 1 ||
+        c.x < event.global.x - this.x &&
+        this.children[i + 1].x > event.global.x - this.x
+      ) {
+        this.selectedChildren.y = i;
+        c.alpha = 0.5;
+        break;
+      }
+    }
 
-  function onDragEndRuler() {
-    this.alpha = 1;
-    if (dragTarget) {
-      app.stage.off('pointermove', onDragMoveRuler);
-      dragTarget.forEach(d => { d.alpha = 1; });
-      dragTarget = [];
-      lastPos = new PIXI.Point();
+    for (let i = 0; i < this.children.length; i++) {
+      const c = this.children[i];
+      if (
+        i == this.children.length - 1 ||
+        this.children[i].x < event.global.x - this.x &&
+        this.children[i + 1].x > event.global.x - this.x
+      ) {
+        this.selectedChildren.y = i;
+        c.alpha = 0.5;
+        break;
+      }
     }
   }
 
-  function onDragEnd() {
+  function onDragEndRuler() {
     this.alpha = 1;
     if (dragTarget) {
       app.stage.off('pointermove', onDragMove);
@@ -353,27 +286,54 @@ async function init() {
     }
   }
 
-  const ruler = new Ruler(app, onDragStartH, onDragEndRuler,  false,
-    new PIXI.Point(200, 0),
-    new PIXI.Point(70, 5), 0.02, 0.2,
-    new PIXI.Point(800, 0),
-    26,
-    new PIXI.Point(1, 0));
-  const rulerH = new Ruler(app, onDragStartV, onDragEndRuler,  true,
-    new PIXI.Point(0, 200),
-    new PIXI.Point(3, 26), 0.1, 0.1,
-    new PIXI.Point(0, 1200),
-    26,
-    new PIXI.Point(0, 1));
+  function onDragEnd(event) {
+    this.alpha = 1;
+    if (dragTarget) {
+      app.stage.off('pointermove', onDragMove);
+      dragTarget.forEach(d => {
+        d.alpha = 1;
+        d.microshift.x = event.global.x;
+        d.microshift.y = event.global.y;
+      });
+      dragTarget = [];
+      lastPos = new PIXI.Point();
+    }
+  }
 
-  // const rulerC = new Ruler(app, onDragStartV, onDragEnd, onDragMove, true,
-  //   new PIXI.Point(0, 200),
-  //   new PIXI.Point(70, 56), 0.1, 0.1,
-  //   new PIXI.Point(0, 800),
-  //   26,
-  //   new PIXI.Point(1, 1));
-  
-  const render = new Render.CandlestickRenderer(app, onDragStart, onDragEnd);
+  const ruler = new Ruler(
+    app,
+    onDragStart,
+    onDragEndRuler,
+    false,
+    new PIXI.Point(200, 0),
+    new PIXI.Point(70, 5),
+    0.02,
+    0.2,
+    new PIXI.Point(800, 200),
+    26,
+    new PIXI.Point(1, 0)
+  );
+  const rulerH = new Ruler(
+    app,
+    onDragStart,
+    onDragEndRuler,
+    true,
+    new PIXI.Point(0, 200),
+    new PIXI.Point(3, 26),
+    0.1,
+    0.1,
+    new PIXI.Point(200, 1200),
+    26,
+    new PIXI.Point(0, 1)
+  );
+
+  const render = new Render.CandlestickRenderer(
+    app, 
+    onDragStart, 
+    onDragEnd,
+    new PIXI.Point(200, 70),
+    new PIXI.Point(800, 1200)
+  );
 
   const symbol = 'ETHUSDT'; // Replace with the desired trading pair
   const interval = '1m';    // Replace with the desired interval (e.g., 1m, 5m, 1h, 1d)
@@ -393,14 +353,9 @@ async function init() {
       minMaxData.get('low')!.min,
       minMaxData.get('high')!.max
     );
-    // candlestickData.forEach((candlestick: Candles.CandlestickData) => {
-    //   // console.log(candlestick.close);
-    //   const bar = new PIXI.Sprite(PIXI.Texture.WHITE);
-    //   render.addChild(bar);
-    // });
     console.log("Ratios:", ruler.ratioConst(), rulerH.ratioConst())
     render.renderCandlesticks(
-      candlestickData, 
+      candlestickData,
       new PIXI.Point(ruler.ratioConst(), rulerH.ratioConst()),
       new PIXI.Point(minMaxData.get('openTime')!.min, minMaxData.get('low')!.min)
     );

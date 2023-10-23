@@ -8,8 +8,17 @@ export class CandlestickRenderer extends PIXI.Sprite {
   selectedChildren = new PIXI.Point(0, 0);
   microshift = new PIXI.Point(0, 0);
   shiftMask = new PIXI.Point(0, 0);
+  vertical = null;
+  initOffset: PIXI.Point;
+  endOffset: PIXI.Point;
 
-  constructor(app: PIXI.Application, onDragStart, onDragEnd) {
+  constructor(
+    app: PIXI.Application, 
+    onDragStart, 
+    onDragEnd,
+    initOffset = new PIXI.Point(0, 0),
+    endOffset = new PIXI.Point(0, 0)
+    ) {
     super();
     this.app = app ? app : new PIXI.Application({ width: 800, height: 600 });
     // document.body.appendChild(this.app.view);
@@ -21,6 +30,9 @@ export class CandlestickRenderer extends PIXI.Sprite {
     this.eventMode = 'static';
     this.on('pointerdown', onDragStart, this);
     this.on('pointerup', onDragEnd);
+    this.initOffset = initOffset;
+    this.endtOffset = endOffset;
+
   }
 
   renderCandlesticks(
