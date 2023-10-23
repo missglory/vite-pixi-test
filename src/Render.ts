@@ -5,12 +5,12 @@ export class CandlestickRenderer extends PIXI.Sprite {
   private app: PIXI.Application;
   container: PIXI.Container;
   offset = new PIXI.Point(0, 0);
-  selectedChildren = new PIXI.Point(-1, -1);
+  selectedChildren = new PIXI.Point(0, 0);
   microshift = new PIXI.Point(0, 0);
   shiftMask = new PIXI.Point(0, 0);
 
   constructor(app: PIXI.Application, onDragStart, onDragEnd) {
-		super();
+    super();
     this.app = app ? app : new PIXI.Application({ width: 800, height: 600 });
     // document.body.appendChild(this.app.view);
 
@@ -23,18 +23,29 @@ export class CandlestickRenderer extends PIXI.Sprite {
     this.on('pointerup', onDragEnd);
   }
 
-  renderCandlesticks(data: CandlestickData[]) {
-    const candleWidth = 10;
+  renderCandlesticks(
+    data: CandlestickData[],
+    scale = new PIXI.Point(1, 1),
+    shift = new PIXI.Point(0, 0)
+  ) {
     const candleSpacing = 15;
 
     for (let i = 0; i < data.length; i++) {
       const candle = data[i];
-      const x = i * (candleWidth + candleSpacing);
+      const candleWidth = candle.closeTime - candle.openTime;
+      const x = candle.openTime;
       const color = candle.open < candle.close ? 0x00FF00 : 0xFF0000;
-			const _mult = 0.1;
+      const _mult = 0.1;
 
-      const candleBody = this.createRect(x, candle.open * _mult, candleWidth, (candle.close - candle.open) * _mult, color);
-      const candleWick = this.createLine(x + candleWidth / 2, candle.high * _mult, x + candleWidth / 2, candle.low * _mult, color);
+      const candleBody = this.createRect((x - shift.x) * scale.x, (candle.open - shift.y) * scale.y, candleWidth * scale.x, (candle.close - candle.open) * scale.y, color);
+      const x_mid = (x + candleWidth / 2 - shift.x) * scale.x;
+      const candleWick = this.createLine(
+        x_mid, 
+        (candle.high - shift.y)* scale.y, 
+        x_mid, 
+        (candle.low - shift.y) * scale.y, 
+        color
+      );
 
       this.addChild(candleBody, candleWick);
     }

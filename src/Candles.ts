@@ -54,17 +54,20 @@ export class BinanceCandlestickFetcher {
   async fetchCandlestickData(
     symbol: string,
     interval: string,
-    startTime?: number,
-    endTime?: number
+    limit: number
+    // startTime?: number,
+    // endTime?: number
   ): Promise<CandlestickData[]> {
     try {
       const params: Record<string, any> = {
         symbol,
         interval,
+        limit
       };
 
-      if (startTime) params.startTime = startTime;
-      if (endTime) params.endTime = endTime;
+      // if (startTime) params.startTime = startTime;
+      // if (endTime) params.endTime = endTime;
+      if (limit) params.limit = limit;
 
       const response: AxiosResponse<CandlestickData[]> = await axios.get(
         `${this.baseUrl}/klines`,
