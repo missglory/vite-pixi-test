@@ -21,9 +21,6 @@ export class CandlestickRenderer extends PIXI.Sprite {
     ) {
     super();
     this.app = app ? app : new PIXI.Application({ width: 800, height: 600 });
-    // document.body.appendChild(this.app.view);
-
-    // this.container = new PIXI.Container();
     this.app.stage.addChild(this);
 
     this.cursor = 'pointer';
@@ -32,7 +29,8 @@ export class CandlestickRenderer extends PIXI.Sprite {
     this.on('pointerup', onDragEnd);
     this.initOffset = initOffset;
     this.endtOffset = endOffset;
-
+    this.x = initOffset.x;
+    this.y = initOffset.y;
   }
 
   renderCandlesticks(

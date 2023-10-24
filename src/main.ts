@@ -67,13 +67,13 @@ class Ruler extends PIXI.Sprite {
   }
 
   fill() {
-    while (this.children.length === 0) { this.add(); }
+    while (this.children.length === 0) { this.addToEdge(); }
     let last = this.children.at(-1) ?? null;
     if (last === null) { return; }
     while ((this.vertical && last.y + this.y < this.endOffset.y - this.offset.y)
       || (!this.vertical && last.x + this.x < this.endOffset.x - this.offset.x)
     ) {
-      this.add();
+      this.addToEdge();
       last = this.children.at(-1) ?? null;
       if (last === null) { return; }
     }
@@ -90,7 +90,7 @@ class Ruler extends PIXI.Sprite {
     while ((this.vertical && last.y + this.y > this.offset.y)
       || (!this.vertical && last.x + this.x > this.offset.x)
     ) {
-      this.add(false);
+      this.addToEdge(false);
       last = this.children.at(0) ?? null;
       if (last === null) { return; }
     }
@@ -105,14 +105,14 @@ class Ruler extends PIXI.Sprite {
   }
 
   calculateRoundedPeriod(start: number, end: number): number {
+    if (start >= end) {
+      throw new Error("Start must be less than end");
+    }
     this.removeChildren();
     this.levels = [];
     this.startValue = start;
     this.start = start;
     this.end = end;
-    if (start >= end) {
-      throw new Error("Start must be less than end");
-    }
 
     console.log("realign ", start, end);
     const rangeLength = end - start;
@@ -143,51 +143,65 @@ class Ruler extends PIXI.Sprite {
     return this.vertical ? (newLevel).toFixed(3) : Utils.timestampToUtcString(Math.trunc(newLevel));
   }
 
-  add(tail = true) {
+  addToEdge(tail = true) {
     // const text = this.children.length > 0 ? this.children.at(-1).x this.x.toFixed(3);
     // super.addChild(new PIXI.Text())
     if (this.levels.length > 0) {
       // if (this.vertical) {
-      const newLevel = tail ? this.levels.at(-1)! + this.period : this.levels.at(0)! - this.period;
-      console.log("New level: ", newLevel);
-      const text = this.makeLabel(newLevel);
-      const newChild = new PIXI.Text(text, new PIXI.TextStyle({ fontFamily: 'JetBrains Mono', fontSize: this.fontSize, fill: this.vertical ? "#83ffff" : "#ffff83" }));
-      newChild.scale.set(0.5);
-      newChild.x = tail ? this.children.at(-1)!.x + this.offset.x : this.children.at(0)!.x - this.offset.x;
-      newChild.y = tail ? this.children.at(-1)!.y + this.offset.y : this.children.at(0)!.y - this.offset.y;
-      console.log("set offset" + newChild.x + " " + newChild.y + " " + this.vertical);
-      if (tail) {
-        this.addChild(newChild);
-        this.levels.push(newLevel);
-      } else {
-        this.addChildAt(newChild, 0);
-        // this.levels = [newLevel] + this.levels;
-        this.levels.unshift(newLevel);
-      }// }
+      const newLevel = tail ?
+        this.levels.at(-1)! + this.period :
+        this.levels.at(0)! - this.period;
+      this.addLevel(newLevel, tail);
     } else {
-      this.levels.push(this.startValue);
-      console.log("levels : ", this.levels.length);
-      const newChild = new PIXI.Text(this.makeLabel(this.startValue), new PIXI.TextStyle({ fontFamily: 'JetBrains Mono', fontSize: this.fontSize, fill: this.vertical ? "#83cccc" : "#cccc83" }));
-      newChild.scale.set(0.5);
-      newChild.zIndex = 1;
-      // newChild.x = this.initOffset.x;
-      // newChild.y = this.initOffset.y;
-      this.addChild(newChild);
+      this.addLevel(this.startValue);
     }
   }
 
+  addLevel(newLevel: number, tail = true) {
+    console.log("New level: ", newLevel);
+    const text = this.makeLabel(newLevel);
+    const newChild = new PIXI.Text(text, new PIXI.TextStyle({ fontFamily: 'JetBrains Mono', fontSize: this.fontSize, fill: this.vertical ? "#83ffff" : "#ffff83" }));
+    newChild.scale.set(0.5);
+    if (this.children.length > 0) {
+      newChild.x = tail ? this.children.at(-1)!.x + this.offset.x : this.children.at(0)!.x - this.offset.x;
+      newChild.y = tail ? this.children.at(-1)!.y + this.offset.y : this.children.at(0)!.y - this.offset.y;
+      console.log("set offset" + newChild.x + " " + newChild.y + " " + this.vertical);
+    } else {
+      newChild.x = this.initOffset.x;
+      newChild.y = this.initOffset.y;
+    }
+    if (tail) {
+      this.addChild(newChild);
+      this.levels.push(newLevel);
+    } else {
+      this.addChildAt(newChild, 0);
+      this.levels.unshift(newLevel);
+    }
+  }
+
+
   remove(ind = 0) {
-    const last = this.children.at(ind)!;
-    this.levels.pop();
+    // const last = this.children.at(ind)!;
     while (ind < 0) { ind += this.children.length; }
+    this.levels.splice(ind, 1);
     super.removeChildAt(ind);
   }
 
-  // addChild(child: PIXI.DisplayObject) {
-  // super.addChild(child);
-  // this.textChildren.push(child);
-  // }
+  private calculateXPosition(value: number): number {
+    const totalRange = this.end - this.start;
+    const normalizedValue = (value - this.start) / totalRange;
+    return normalizedValue * this.width;
+  }
 
+  private findInsertIndex(newValue: number): number {
+    for (let i = 0; i < this.levels.length; i++) {
+      const levelValue = Number(this.levels[i]);
+      if (newValue >= levelValue) {
+        return i;
+      }
+    }
+    return this.levels.length;
+  }
 };
 
 
@@ -306,10 +320,10 @@ async function init() {
     onDragEndRuler,
     false,
     new PIXI.Point(200, 0),
-    new PIXI.Point(70, 5),
+    new PIXI.Point(0, 5),
     0.02,
     0.2,
-    new PIXI.Point(800, 200),
+    new PIXI.Point(2000, 200),
     26,
     new PIXI.Point(1, 0)
   );
@@ -319,7 +333,7 @@ async function init() {
     onDragEndRuler,
     true,
     new PIXI.Point(0, 200),
-    new PIXI.Point(3, 26),
+    new PIXI.Point(5, 0),
     0.1,
     0.1,
     new PIXI.Point(200, 1200),
@@ -328,11 +342,11 @@ async function init() {
   );
 
   const render = new Render.CandlestickRenderer(
-    app, 
-    onDragStart, 
+    app,
+    onDragStart,
     onDragEnd,
-    new PIXI.Point(200, 70),
-    new PIXI.Point(800, 1200)
+    new PIXI.Point(0, 0),
+    new PIXI.Point(2000, 1200)
   );
 
   const symbol = 'ETHUSDT'; // Replace with the desired trading pair
@@ -346,7 +360,7 @@ async function init() {
     console.log(minMaxData);
     console.log(candlestickData);
     ruler.calculateRoundedPeriod(
-      minMaxData.get('openTime')!.min,
+      (minMaxData.get('openTime')!.min),
       minMaxData.get('closeTime')!.max
     );
     rulerH.calculateRoundedPeriod(
