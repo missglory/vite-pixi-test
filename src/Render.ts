@@ -2,7 +2,7 @@ import * as PIXI from 'pixi.js';
 import * as Candles from './Candles';
 
 export class CandlestickRenderer extends PIXI.Sprite {
-  private app: PIXI.Application;
+  private app: PIXI.Sprite;
   container: PIXI.Container;
   offset = new PIXI.Point(0, 0);
   selectedChildren = new PIXI.Point(0, 0);
@@ -13,15 +13,15 @@ export class CandlestickRenderer extends PIXI.Sprite {
   endOffset: PIXI.Point;
 
   constructor(
-    app: PIXI.Application, 
-    onDragStart, 
+    app: PIXI.Sprite,
+    onDragStart,
     onDragEnd,
     initOffset = new PIXI.Point(0, 0),
     endOffset = new PIXI.Point(0, 0)
-    ) {
+  ) {
     super();
-    this.app = app ? app : new PIXI.Application({ width: 800, height: 600 });
-    this.app.stage.addChild(this);
+    this.app = app;
+    this.app.addChild(this);
 
     this.cursor = 'pointer';
     this.eventMode = 'static';
@@ -31,6 +31,26 @@ export class CandlestickRenderer extends PIXI.Sprite {
     this.endtOffset = endOffset;
     this.x = initOffset.x;
     this.y = initOffset.y;
+  }
+
+  renderOrders(data, scale = new PIXI.Point(1, 1), shift = new PIXI.Point(0, 0)) {
+    const orderHeight = 10; // Set the height of the order lines
+
+    for (let i = 0; i < data.length; i++) {
+      const order = data[i];
+      const x1 = (order.time - shift.x) * scale.x;
+      const x2 = order.cancel_time || order.fill_time ? Math.min(
+        (order.cancel_time || order.fill_time) - shift.x,
+        // You can add a default value here if necessary.
+      ) * scale.x :
+      1e9;
+      const y = (order.price - shift.y) * scale.y;
+      const color = order.fill_time ? 0x00FF00 : 0xFF0000; // Green for filled orders, red for canceled orders
+
+      const orderLine = this.createLine(x1, y, x2, y, color);
+
+      this.addChild(orderLine);
+    }
   }
 
   renderCandlesticks(
@@ -50,10 +70,10 @@ export class CandlestickRenderer extends PIXI.Sprite {
       const candleBody = this.createRect((x - shift.x) * scale.x, (candle.open - shift.y) * scale.y, candleWidth * scale.x, (candle.close - candle.open) * scale.y, color);
       const x_mid = (x + candleWidth / 2 - shift.x) * scale.x;
       const candleWick = this.createLine(
-        x_mid, 
-        (candle.high - shift.y)* scale.y, 
-        x_mid, 
-        (candle.low - shift.y) * scale.y, 
+        x_mid,
+        (candle.high - shift.y) * scale.y,
+        x_mid,
+        (candle.low - shift.y) * scale.y,
         color
       );
 

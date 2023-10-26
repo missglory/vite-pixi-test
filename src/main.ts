@@ -2,10 +2,34 @@ import * as PIXI from 'pixi.js';
 import * as Candles from './Candles';
 import * as Utils from './Utils';
 import * as Render from './Render';
+import * as Sequelize from "sequelize";
+import { Buffer } from 'buffer';
+import Process from 'process';
+import { Viewport } from "pixi-viewport";
+globalThis.process = Process;
+globalThis.Buffer = Buffer;
+import { Pool, QueryConfig, QueryResult } from 'pg';
 
-const app = new PIXI.Application({ background: '#000', resizeTo: window });
+const app = new PIXI.Application({
+  // background: '#000', 
+  backgroundColor: 0x000,
+  resizeTo: window
+});
 
 document.body.appendChild(app.view);
+
+const viewport = new Viewport({
+  screenWidth: window.innerWidth,
+  screenHeight: window.innerHeight,
+  worldWidth: 1000,
+  worldHeight: 1000,
+  events: app.renderer.events
+  // interaction: app.renderer.events
+});
+
+viewport.drag().pinch().wheel().decelerate();
+
+app.stage.addChild(viewport);
 
 
 class Ruler extends PIXI.Sprite {
@@ -43,7 +67,7 @@ class Ruler extends PIXI.Sprite {
     this.on('pointerdown', onDragStart, this);
     this.on('pointerup', onDragEnd);
     // this.on('pointerleave', onDragEnd);
-    parent.stage.addChild(this);
+    parent.addChild(this);
     this.initOffset = initOffset.clone();
     this.endOffset = endOffset.clone();
     this.offset = offset.clone();
@@ -315,7 +339,7 @@ async function init() {
   }
 
   const ruler = new Ruler(
-    app,
+    viewport,
     onDragStart,
     onDragEndRuler,
     false,
@@ -328,7 +352,7 @@ async function init() {
     new PIXI.Point(1, 0)
   );
   const rulerH = new Ruler(
-    app,
+    viewport,
     onDragStart,
     onDragEndRuler,
     true,
@@ -342,14 +366,14 @@ async function init() {
   );
 
   const render = new Render.CandlestickRenderer(
-    app,
+    viewport,
     onDragStart,
     onDragEnd,
     new PIXI.Point(0, 0),
     new PIXI.Point(2000, 1200)
   );
 
-  const symbol = 'ETHUSDT'; // Replace with the desired trading pair
+  const symbol = 'BLZUSDT'; // Replace with the desired trading pair
   const interval = '1m';    // Replace with the desired interval (e.g., 1m, 5m, 1h, 1d)
   const limit = 1000;       // The maximum number of data points you want to retrieve
 
@@ -360,7 +384,8 @@ async function init() {
     console.log(minMaxData);
     console.log(candlestickData);
     ruler.calculateRoundedPeriod(
-      (minMaxData.get('openTime')!.min),
+      (minMaxData.get('openTime')!.min + minMaxData.get('closeTime')!.max
+      ) / 2,
       minMaxData.get('closeTime')!.max
     );
     rulerH.calculateRoundedPeriod(
@@ -368,11 +393,69 @@ async function init() {
       minMaxData.get('high')!.max
     );
     console.log("Ratios:", ruler.ratioConst(), rulerH.ratioConst())
+    const scale = new PIXI.Point(ruler.ratioConst(), rulerH.ratioConst());
+    const shift = new PIXI.Point(minMaxData.get('openTime')!.min, minMaxData.get('low')!.min);
     render.renderCandlesticks(
       candlestickData,
-      new PIXI.Point(ruler.ratioConst(), rulerH.ratioConst()),
-      new PIXI.Point(minMaxData.get('openTime')!.min, minMaxData.get('low')!.min)
+      scale,
+      shift
     );
+
+    async function fetchOrders(): Promise<Order[]> {
+      try {
+        const response = await fetch('http://195.91.221.88:5001'); // Adjust the URL to match your server endpoint.
+        if (!response.ok) {
+          throw new Error('Failed to fetch orders');
+        }
+        const orders = await response.json();
+
+        // Map the fetched data to the desired structure (assuming the server returns an array of orders).
+        const structuredOrders: Order[] = orders.map((order: any) => ({
+          time: new Date(order.time),
+          manual_id: order.manual_id,
+          agent: order.agent,
+          exchange: order.exchange,
+          pair: order.pair,
+          price: order.price,
+          amount: order.amount,
+          fill_time: order.fill_time ? new Date(order.fill_time) : null,
+          cancel_time: order.cancel_time ? new Date(order.cancel_time) : null,
+          tv_label: order.tv_label,
+        }));
+
+        return structuredOrders;
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        throw error;
+      }
+    }
+
+    // Define the structure of an Order
+    interface Order {
+      time: Date;
+      manual_id: string;
+      agent: string;
+      exchange: string;
+      pair: string;
+      price: number;
+      amount: number;
+      fill_time: Date | null;
+      cancel_time: Date | null;
+      tv_label: string;
+    }
+
+    // Example usage
+    fetchOrders()
+      .then((orders) => {
+        console.log('Fetched orders:', orders);
+        render.renderOrders(orders, scale, shift);
+        // You can work with the orders array in your frontend application.
+      })
+      .catch((error) => {
+        console.error('Error:', error);
+      });
+
+
   } catch (error) {
     console.error(error);
   }
