@@ -1,5 +1,6 @@
 import * as PIXI from 'pixi.js';
 import * as Candles from './Candles';
+import * as Ruler from './Ruler';
 
 export class CandlestickRenderer extends PIXI.Sprite {
   private app: PIXI.Sprite;
@@ -11,26 +12,29 @@ export class CandlestickRenderer extends PIXI.Sprite {
   vertical = null;
   initOffset: PIXI.Point;
   endOffset: PIXI.Point;
+  pairRuler: Ruler.Ruler[];
 
   constructor(
     app: PIXI.Sprite,
     onDragStart,
     onDragEnd,
     initOffset = new PIXI.Point(0, 0),
-    endOffset = new PIXI.Point(0, 0)
+    endOffset = new PIXI.Point(0, 0),
+    pairRulers: Ruler.Ruler[] = []
   ) {
     super();
     this.app = app;
     this.app.addChild(this);
 
-    this.cursor = 'pointer';
-    this.eventMode = 'static';
-    this.on('pointerdown', onDragStart, this);
-    this.on('pointerup', onDragEnd);
+    // this.cursor = 'pointer';
+    // this.eventMode = 'static';
+    // this.on('pointerdown', onDragStart, this);
+    // this.on('pointerup', onDragEnd);
     this.initOffset = initOffset;
     this.endtOffset = endOffset;
     this.x = initOffset.x;
     this.y = initOffset.y;
+    this.pairRuler = pairRulers;
   }
 
   renderOrders(data, scale = new PIXI.Point(1, 1), shift = new PIXI.Point(0, 0)) {

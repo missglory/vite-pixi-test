@@ -6,10 +6,16 @@ import * as Sequelize from "sequelize";
 import { Buffer } from 'buffer';
 import Process from 'process';
 import { Viewport } from "pixi-viewport";
+import { CoolBitmapText, hackBitmapTextDisableMips } from "./CoolBitmapText";
 globalThis.process = Process;
 globalThis.Buffer = Buffer;
 import { Pool, QueryConfig, QueryResult } from 'pg';
+import { onDragMoveDefault } from './Draggable';
+import * as Ruler from './Ruler';
+// export let dragTarget: PIXI.Sprite[] = [];
 
+// const interworff = new URL('/interwoff.fnt', import.meta.url);
+// import interwoff from './interwoff.fnt'
 const app = new PIXI.Application({
   // background: '#000', 
   backgroundColor: 0x000,
@@ -18,221 +24,116 @@ const app = new PIXI.Application({
 
 document.body.appendChild(app.view);
 
-const viewport = new Viewport({
-  screenWidth: window.innerWidth,
-  screenHeight: window.innerHeight,
-  worldWidth: 1000,
-  worldHeight: 1000,
-  events: app.renderer.events
-  // interaction: app.renderer.events
-});
-
-viewport.drag().pinch().wheel().decelerate();
-
-app.stage.addChild(viewport);
+app.stage.x = 0;
+app.stage.y = 0;
 
 
-class Ruler extends PIXI.Sprite {
-  initOffset = new PIXI.Point(0, 0);
-  endOffset = new PIXI.Point(0, 0);
-  vertical = true;
-  levels: number[] = [];
-  period = 0.1;
-  startValue = 0.01;
-  endValue = 0.01;
-  fontSize = 26;
-  offset = new PIXI.Point(0, 0);
-  selectedChildren = new PIXI.Point(-1, -1);
-  microshift = new PIXI.Point(0, 0);
-  shiftMask = new PIXI.Point(0, 0);
-  start = 0;
-  end = 0;
-  constructor(
-    parent,
-    onDragStart,
-    onDragEnd,
-    vertical = true,
-    offset: PIXI.Point = new PIXI.Point(0, 0),
-    initOffset: PIXI.Point = new PIXI.Point(0, 0),
-    startValue = 0.01,
-    period = 0.1,
-    endOffset = new PIXI.Point(0, 0),
-    fontSize = 26,
-    shiftMask = new PIXI.Point(1, 1),
-  ) {
-    super();
+function testf(event) {
+  // console.log('abioba');
+  // console.log(this);
+  // console.log(event.viewport);
+  // console.log(event.viewport);
+  // console.log(event);
+  // console.log(dragTarget);
+  console.log(event.viewport.children[0]);
+  // dragTarget.forEach(element => {
+  //   let i = 0;
+  //   // console.log(element);
+  //   if (!element instanceof Render.CandlestickRenderer) {
+  //     i++;
+  //     element.toLocal(new PIXI.Point(
+  //       element.vertical ? -  event.viewport.x : 0,
+  //       !element.vertical ? - event.viewport.y : 0,
+  //       ),
+  //       element,element.position);
+  // console.log(event.parent.children);
+  // event.parent.children.forEach(c => {
+  // c.moved(event);
+  // c.x = event.screen.x;
+  // c.y = event.screen.y;
+  // });
 
-    this.cursor = 'pointer';
-    this.eventMode = 'static';
-    this.on('pointerdown', onDragStart, this);
-    this.on('pointerup', onDragEnd);
-    // this.on('pointerleave', onDragEnd);
-    parent.addChild(this);
-    this.initOffset = initOffset.clone();
-    this.endOffset = endOffset.clone();
-    this.offset = offset.clone();
-    this.vertical = vertical;
-    this.y = initOffset.y;
-    this.x = initOffset.x;
-    this.fontSize = fontSize;
-    this.startValue = startValue;
-    this.endValue = startValue;
-    this.period = period;
-    this.shiftMask = shiftMask;
-
-    this.fill();
-  }
-
-  toLocal(...params: any[]) {
-    params[0].x *= this.shiftMask.x;
-    params[0].y *= this.shiftMask.y;
-    this.parent.toLocal(...params);
-    this.fill();
-  }
-
-  fill() {
-    while (this.children.length === 0) { this.addToEdge(); }
-    let last = this.children.at(-1) ?? null;
-    if (last === null) { return; }
-    while ((this.vertical && last.y + this.y < this.endOffset.y - this.offset.y)
-      || (!this.vertical && last.x + this.x < this.endOffset.x - this.offset.x)
-    ) {
-      this.addToEdge();
-      last = this.children.at(-1) ?? null;
-      if (last === null) { return; }
-    }
-
-    while ((this.vertical && last.y + this.y > this.endOffset.y)
-      || (!this.vertical && last.x + this.x > this.endOffset.x)
-    ) {
-      this.remove(-1);
-      last = this.children.at(-1) ?? null;
-      if (last === null) { return; }
-    }
-
-    last = this.children.at(0)!;
-    while ((this.vertical && last.y + this.y > this.offset.y)
-      || (!this.vertical && last.x + this.x > this.offset.x)
-    ) {
-      this.addToEdge(false);
-      last = this.children.at(0) ?? null;
-      if (last === null) { return; }
-    }
-
-    while ((this.vertical && last.y + this.y < 0)
-      || (!this.vertical && last.x + this.x < 0)
-    ) {
-      this.remove(0);
-      last = this.children.at(0) ?? null;
-      if (last === null) { return; }
-    }
-  }
-
-  calculateRoundedPeriod(start: number, end: number): number {
-    if (start >= end) {
-      throw new Error("Start must be less than end");
-    }
-    this.removeChildren();
-    this.levels = [];
-    this.startValue = start;
-    this.start = start;
-    this.end = end;
-
-    console.log("realign ", start, end);
-    const rangeLength = end - start;
-    // const roundedLength = Math.pow(10, Math.floor(Math.log10(rangeLength)));
-    // const period = Math.ceil(rangeLength / roundedLength) * roundedLength;
-    // console.log("New period: ", period);
-
-    this.period = rangeLength / 4;
-    this.fill();
-    return this.period;
-  }
-
-  ratioConst(): number {
-    const c0 = this.children.at(0)!;
-    const c1 = this.children.at(1)!;
-    const x0 = this.vertical ? c0.y : c0.x;
-    const x1 = this.vertical ? c1.y : c1.x;
-    const l0 = this.levels.at(0)!;
-    return (x1 - x0) / (this.levels.at(1)! - l0);
-  }
-
-  ratio(n: number): number {
-    const l0 = this.levels.at(0)!;
-    return (n - l0) * this.ratioConst();
-  }
-
-  makeLabel(newLevel: number) {
-    return this.vertical ? (newLevel).toFixed(3) : Utils.timestampToUtcString(Math.trunc(newLevel));
-  }
-
-  addToEdge(tail = true) {
-    // const text = this.children.length > 0 ? this.children.at(-1).x this.x.toFixed(3);
-    // super.addChild(new PIXI.Text())
-    if (this.levels.length > 0) {
-      // if (this.vertical) {
-      const newLevel = tail ?
-        this.levels.at(-1)! + this.period :
-        this.levels.at(0)! - this.period;
-      this.addLevel(newLevel, tail);
-    } else {
-      this.addLevel(this.startValue);
-    }
-  }
-
-  addLevel(newLevel: number, tail = true) {
-    console.log("New level: ", newLevel);
-    const text = this.makeLabel(newLevel);
-    const newChild = new PIXI.Text(text, new PIXI.TextStyle({ fontFamily: 'JetBrains Mono', fontSize: this.fontSize, fill: this.vertical ? "#83ffff" : "#ffff83" }));
-    newChild.scale.set(0.5);
-    if (this.children.length > 0) {
-      newChild.x = tail ? this.children.at(-1)!.x + this.offset.x : this.children.at(0)!.x - this.offset.x;
-      newChild.y = tail ? this.children.at(-1)!.y + this.offset.y : this.children.at(0)!.y - this.offset.y;
-      console.log("set offset" + newChild.x + " " + newChild.y + " " + this.vertical);
-    } else {
-      newChild.x = this.initOffset.x;
-      newChild.y = this.initOffset.y;
-    }
-    if (tail) {
-      this.addChild(newChild);
-      this.levels.push(newLevel);
-    } else {
-      this.addChildAt(newChild, 0);
-      this.levels.unshift(newLevel);
-    }
-  }
+  // event.viewport.parent.children.forEach(c => {
+    // console.log("Child::");
+    // console.log(c.children);
+    // c.position.x = event.viewport.position.x * caches.shiftMask.x;
+    // c.position.y = event.viewport.position.y * caches.shiftMask.y;
+  // });
+  //   }
+  //   // if (element.vertical !== undefined){
+  //   // }
+  //   console.log(i);
+  // });
+  // dragTarget.forEach(d => {
+  // console.log(d.,microshift.x);
+  // });
+}
 
 
-  remove(ind = 0) {
-    // const last = this.children.at(ind)!;
-    while (ind < 0) { ind += this.children.length; }
-    this.levels.splice(ind, 1);
-    super.removeChildAt(ind);
-  }
 
-  private calculateXPosition(value: number): number {
-    const totalRange = this.end - this.start;
-    const normalizedValue = (value - this.start) / totalRange;
-    return normalizedValue * this.width;
-  }
+function testf2(event) {
+  // console.log('abioba');
+  // console.log(this);
+  // console.log(event.viewport);
+  // console.log(event.viewport);
+  // console.log(event)o;
+  console.log("TESTF2");
+console.log(event);
 
-  private findInsertIndex(newValue: number): number {
-    for (let i = 0; i < this.levels.length; i++) {
-      const levelValue = Number(this.levels[i]);
-      if (newValue >= levelValue) {
-        return i;
-      }
-    }
-    return this.levels.length;
-  }
-};
+  // console.log(event.viewport);
+  // dragTarget.forEach(element => {
+  //   let i = 0;
+  //   console.log(element);
+  //   if (!element instanceof Render.CandlestickRenderer) {
+  //     i++;
+  //     element.toLocal(new PIXI.Point(
+  //       element.vertical ? -  event.viewport.x : 0,
+  //       !element.vertical ? - event.viewport.y : 0,
+  //       ),
+  //       element,element.position);
+  // event.viewport.parent.children.forEach(c => {
+    // c.moved(event);
+    // console.log("Child::");
+    // console.log(c.children);
+    // const mask = new PIXI.Point(1, 1);
+    // mask.x = c.children[0] instanceof Ruler.Ruler ? c.children[0].vertical : 1;
+    // mask.y = c.children[1] instanceof Ruler.Ruler ? c.children[1].vertical : 1;
+    // console.log(mask);
+    // c.position.x = event.viewport.position.x * c.shiftMask.x;
+    // c.position.y = event.viewport.position.y * c.shiftMask.y;
+  // });
 
+  //   }
+  //   // if (element.vertical !== undefined){
+  //   // }
+  //   console.log(i);
+  // });
+  // dragTarget.forEach(d => {
+  // console.log(d.,microshift.x);
+  // });
+}
+const viewports = [0, 1, 2].map(i => {
+  const viewport = new Viewport({
+    screenWidth: i !== 2 ? window.innerWidth : 200,
+    screenHeight: i !== 1 ? window.innerHeight : 200,
+    worldWidth: i !== 2 ? 1000 : 200,
+    worldHeight: i !== 1 ? 1000 : 200,
+    events: app.renderer.events
+    // interaction: app.renderer.events
+  })
+    .on('moved', i === 0 ? testf : testf2)
+    .on('drag-start', Ruler.onDragStartRuler);
+  viewport.drag().pinch().wheel().decelerate();
+  viewport.zIndex = i;
 
-// Load them google fonts before starting...
+  app.stage.addChild(viewport);
+  return viewport;
+  // viewport.moveCenter(1000,1000);
+})
+
 window.WebFontConfig = {
   google: {
-    families: ['JetBrains Mono'],
+    families: ['Inter', 'JetBrains Mono'],
   },
   active() {
     init();
@@ -249,43 +150,74 @@ window.WebFontConfig = {
   s.parentNode.insertBefore(wf, s);
 }());
 
-let lastPos = new PIXI.Point();
 
 async function init() {
-  let dragTarget: PIXI.Sprite[] = [];
-  app.stage.eventMode = 'static';
-  app.stage.hitArea = app.screen;
-  app.stage.on('pointerup', onDragEndRuler);
-  app.stage.on('pointerupoutside', onDragEndRuler);
+  // PIXI.Assets.add({
+  // alias: 'interwoff', 
+  // src: 'assets/interwoff.fnt'
+  // });
+  // PIXI.BitmapFont.from("assets/interwoff.fnt");
+  // PIXI.LoaderResource.setExtensionXhrType('fnt', PIXI.LoaderResource.XHR_RESPONSE_TYPE.TEXT);
+  // PIXI.loadBitmapFont('assets/interwoff.fnt');
+  // app.stage.eventMode = 'static';
+  // app.stage.hitArea = app.screen;
+  // app.stage.on('pointerup', onDragEndRuler);
+  // app.stage.on('pointerupoutside', onDragEndRuler);
 
   function onDragMove(event) {
-    dragTarget.forEach(d => {
-      if (d.parent instanceof PIXI.Container) {
-        d.toLocal(new PIXI.Point(
-          event.global.x - d.microshift.x,
-          event.global.y - d.microshift.y
-        ),
-          d.parent, d.position
-        );
-      }
-      console.log(d.microshift.x, d.microshift.y)
-      console.log(d);
-    });
+    console.log(this);
+    const target = event.children[0];
+    console.log();
+    if (target.microshift === undefined) {
+      return;
+    }
+    if (target instanceof PIXI.Container) {
+      console.log('aboba:(');
+      //   this.moveCenter(
+      // new PIXI.Point(
+      // this.x + this.microshift.x,
+      // this.y + this.microshift.y
+      //  this.vertical ? this.microshift.x : 0,
+      // !this.vertical ? this.microshift.y : 0
+      // ),
+      // this, this.position
+      // );
+    }
+    // dragTarget.forEach(d => {
+    // if (!(d instanceof PIXI.Container)) { return; }
+    // if (d.parent instanceof PIXI.Container) {
+    //   // d.toLocal(new PIXI.Point(
+    //     //  d.vertical ? - d.x + d.microshift.x : 0,
+    //     // !d.vertical ? - d.y + d.microshift.y : 0
+    //   // ),
+    //     // d.parent, d.position
+    //   // );
+    // d.moveCenter(
+    //     // d.microshift.x, d.microshift.y);
+    //  d.vertical ? - d.x + d.microshift.x : 0,
+    // !d.vertical ? - d.y + d.microshift.y : 0
+    // );;
+    // }
+    // console.log(d.microshift.x, d.microshift.y)
+    // console.log(d);
+    // }
+    // );
   }
 
   function onDragStart(event) {
-    this.alpha = 0.5;
-    dragTarget = this.parent.children;
-    dragTarget.forEach(t => {
-      t.microshift.x = event.global.x - t.x;
-      t.microshift.y = event.global.y - t.y;
-    });
-    this.microshift.x = event.global.x - this.x;
-    this.microshift.y = event.global.y - this.y;
-    app.stage.on('pointermove', onDragMove);
+    console.log(event.parent.parent);
+    event.parent.parent.children.forEach(p => {
+      Ruler.dragTarget.push(p.children);
+    })
+    // dragTarget.forEach(t => {
+    //   t.microshift.x = t.x;
+    //   t.microshift.y = t.y;
+    // });
+    this.microshift.x = this.x;
+    this.microshift.y = this.y;
+    // app.stage.on('pointermove', onDragMove);
     // console.log("onDragStart");
     // console.log(this);
-    lastPos = new PIXI.Point(event.global.x, event.global.y);
 
     for (let i = 0; i < this.children.length; i++) {
       const c = this.children[i];
@@ -315,31 +247,34 @@ async function init() {
   }
 
   function onDragEndRuler() {
-    this.alpha = 1;
-    if (dragTarget) {
-      app.stage.off('pointermove', onDragMove);
-      dragTarget.forEach(d => { d.alpha = 1; });
-      dragTarget = [];
-      lastPos = new PIXI.Point();
+    // this.alpha = 1;
+    if (Ruler.dragTarget) {
+      // app.stage.off('pointermove', onDragMove);
+      Ruler.dragTarget.forEach(d => { d.alpha = 1; });
+      while (Ruler.dragTarget.length > 0) {
+        dragTarget.pop();
+      }
     }
   }
 
   function onDragEnd(event) {
-    this.alpha = 1;
+    // this.alpha = 1;
     if (dragTarget) {
-      app.stage.off('pointermove', onDragMove);
+      // app.stage.off('pointermove', onDragMove);
       dragTarget.forEach(d => {
         d.alpha = 1;
         d.microshift.x = event.global.x;
         d.microshift.y = event.global.y;
       });
-      dragTarget = [];
-      lastPos = new PIXI.Point();
+      // dragTarget = new Array<PIXI.Sprite>();
+      while (dragTarget.length > 0) {
+        dragTarget.pop();
+      }
     }
   }
 
-  const ruler = new Ruler(
-    viewport,
+  const ruler = new Ruler.Ruler(
+    viewports[1],
     onDragStart,
     onDragEndRuler,
     false,
@@ -351,8 +286,8 @@ async function init() {
     26,
     new PIXI.Point(1, 0)
   );
-  const rulerH = new Ruler(
-    viewport,
+  const rulerH = new Ruler.Ruler(
+    viewports[2],
     onDragStart,
     onDragEndRuler,
     true,
@@ -366,7 +301,7 @@ async function init() {
   );
 
   const render = new Render.CandlestickRenderer(
-    viewport,
+    viewports[0],
     onDragStart,
     onDragEnd,
     new PIXI.Point(0, 0),
@@ -403,7 +338,8 @@ async function init() {
 
     async function fetchOrders(): Promise<Order[]> {
       try {
-        const response = await fetch('http://195.91.221.88:5001'); // Adjust the URL to match your server endpoint.
+        // const response = await fetch('http://195.91.221.88:5001'); // Adjust the URL to match your server endpoint.
+        const response = await fetch('http://localhost:5000'); // Adjust the URL to match your server endpoint.
         if (!response.ok) {
           throw new Error('Failed to fetch orders');
         }
