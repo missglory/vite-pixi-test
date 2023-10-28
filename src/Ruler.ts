@@ -1,8 +1,10 @@
 import * as PIXI from 'pixi.js';
 import * as Utils from './Utils';
 import * as Render from './Render';
+import { Viewport } from "pixi-viewport";
 
 export let dragTarget: PIXI.Sprite[] = [];
+export let lastPos = new PIXI.Point();
 
 export class Ruler extends PIXI.Sprite {
   initOffset = new PIXI.Point(0, 0);
@@ -224,14 +226,17 @@ export function onDragStartRuler(event) {
 	});
 	// console.log("dragTarget: ")
 	// console.log(dragTarget);
-	dragTarget.forEach(d => {
-		if (d instanceof Render.CandlestickRenderer) {
-		} else {
-			d.microshift.y = event.screen.y ;
-			d.microshift.x = event.screen.x ;
-			console.log(d.microshift);
-		}
-	});
+
+	lastPos = event.screen.clone();
+	// console.log("lastPos: " + lastPos);
+	// dragTarget.forEach(d => {
+	// 	if (d instanceof Render.CandlestickRenderer) {
+	// 	} else {
+	// 		d.microshift.y = event.screen.y;
+	// 		d.microshift.x = event.screen.x;
+	// 		console.log(d.microshift);
+	// 	}
+	// });
 /*
 	event.viewport.children.forEach(d => {
 		for (let i = 0; i < d.children.length; i++) {

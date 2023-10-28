@@ -33,9 +33,9 @@ function testf(event) {
   // console.log(this);
   // console.log(event.viewport);
   // console.log(event.viewport);
-  // console.log(event);
+  console.log(event);
   // console.log(dragTarget);
-  console.log(event.viewport.children[0]);
+  // console.log(event.viewport.parent.children);
   // dragTarget.forEach(element => {
   //   let i = 0;
   //   // console.log(element);
@@ -52,13 +52,36 @@ function testf(event) {
   // c.x = event.screen.x;
   // c.y = event.screen.y;
   // });
+  // event.stopPropagate();
 
-  // event.viewport.parent.children.forEach(c => {
-    // console.log("Child::");
-    // console.log(c.children);
+  event.viewport.parent.children.forEach(c => {
+    // c.moved(event);
+    // c.children.forEach(ch => {
+    //   // ch.moved(event)
+    //   // console.log(ch);
+    //   ch.toLocal(
+    //     new PIXI.Point(
+    //       event.viewport.position.x - Ruler.lastPos.x,
+    //       // -event.viewport.position.x,
+    //       // event.screen.y - Ruler.lastPos.y
+    //       0
+    //     ),
+    //     ch, ch.position
+    //     );
+    // });
+    console.log(Ruler.lastPos.x, Ruler.lastPos.y);
+    console.log(event.viewport.x, event.viewport.y);
+    console.log("Child::");
+    // console.log(c);
+    // c.moveCorner(
+      // event.viewport.position.x - Ruler.lastPos.x,
+      // -event.viewport.position.x,
+      // event.screen.y - Ruler.lastPos.y
+      // 0
+    // );
     // c.position.x = event.viewport.position.x * caches.shiftMask.x;
     // c.position.y = event.viewport.position.y * caches.shiftMask.y;
-  // });
+  });
   //   }
   //   // if (element.vertical !== undefined){
   //   // }
@@ -69,8 +92,6 @@ function testf(event) {
   // });
 }
 
-
-
 function testf2(event) {
   // console.log('abioba');
   // console.log(this);
@@ -78,7 +99,7 @@ function testf2(event) {
   // console.log(event.viewport);
   // console.log(event)o;
   console.log("TESTF2");
-console.log(event);
+  // console.log(event);
 
   // console.log(event.viewport);
   // dragTarget.forEach(element => {
@@ -92,15 +113,15 @@ console.log(event);
   //       ),
   //       element,element.position);
   // event.viewport.parent.children.forEach(c => {
-    // c.moved(event);
-    // console.log("Child::");
-    // console.log(c.children);
-    // const mask = new PIXI.Point(1, 1);
-    // mask.x = c.children[0] instanceof Ruler.Ruler ? c.children[0].vertical : 1;
-    // mask.y = c.children[1] instanceof Ruler.Ruler ? c.children[1].vertical : 1;
-    // console.log(mask);
-    // c.position.x = event.viewport.position.x * c.shiftMask.x;
-    // c.position.y = event.viewport.position.y * c.shiftMask.y;
+  // c.moved(event);
+  // console.log("Child::");
+  // console.log(c.children);
+  // const mask = new PIXI.Point(1, 1);
+  // mask.x = c.children[0] instanceof Ruler.Ruler ? c.children[0].vertical : 1;
+  // mask.y = c.children[1] instanceof Ruler.Ruler ? c.children[1].vertical : 1;
+  // console.log(mask);
+  // c.position.x = event.viewport.position.x * c.shiftMask.x;
+  // c.position.y = event.viewport.position.y * c.shiftMask.y;
   // });
 
   //   }
@@ -112,7 +133,8 @@ console.log(event);
   // console.log(d.,microshift.x);
   // });
 }
-const viewports = [0, 1, 2].map(i => {
+type DirType = "all" | 'x' | 'y';
+const viewports = new Array<DirType>("all", 'x', 'y').map((direction, i) => {
   const viewport = new Viewport({
     screenWidth: i !== 2 ? window.innerWidth : 200,
     screenHeight: i !== 1 ? window.innerHeight : 200,
@@ -123,10 +145,15 @@ const viewports = [0, 1, 2].map(i => {
   })
     .on('moved', i === 0 ? testf : testf2)
     .on('drag-start', Ruler.onDragStartRuler);
-  viewport.drag().pinch().wheel().decelerate();
+
+  viewport.drag().pinch().wheel().decelerate()
+    // .clamp({
+    //   direction
+    // });
+  app.stage.addChild(viewport);
   viewport.zIndex = i;
 
-  app.stage.addChild(viewport);
+  // console.log(viewport);
   return viewport;
   // viewport.moveCenter(1000,1000);
 })
