@@ -46,6 +46,10 @@ export class Ruler extends PIXI.Sprite {
     parent.addChild(this);
     this.initOffset = initOffset.clone();
     this.endOffset = endOffset.clone();
+    console.log("parent", parent);
+    // this.endOffset = new PIXI.Point(parent.screenWidth, parent.screenHeight);
+    this.endOffset = new PIXI.Point(parent.worldWidth, parent.worldHeight);
+    console.log(this.endOffset);
     this.offset = offset.clone();
     this.vertical = vertical;
     this.y = initOffset.y;
@@ -56,6 +60,7 @@ export class Ruler extends PIXI.Sprite {
     this.period = period;
     this.shiftMask = shiftMask;
     this.pairRuler = pairRulers;
+    // Utils.addBoundingRect(this);
 
     this.fill();
   }
@@ -69,36 +74,61 @@ export class Ruler extends PIXI.Sprite {
   }
 
   fill() {
+    // console.log("fill");
+    // const p = this.parent;
+    const p = this.toGlobal(this.position);
+    // const p = new PIXI.Point(0,0);
+    // console.log(p.toGlobal(new PIXI.Point(0, 0)));
+    console.log(p);
+    console.log("tjos scale ", this.parent.scale);
     while (this.children.length === 0) { this.addToEdge(); }
     let last = this.children.at(-1) ?? null;
     if (last === null) { return; }
-    while ((this.vertical && last.y + this.y < this.endOffset.y - this.offset.y)
-      || (!this.vertical && last.x + this.x < this.endOffset.x - this.offset.x)
+    // console.log("scale", this.parent.scale);
+    const spp = new PIXI.Point(
+      // this.parent.scale.x,
+      // this.parent.scale.y,
+      // 1, 1
+      0, 0
+    );
+    // const sp = this.parent.scale;
+    // const sp = spp;
+    const sp = new PIXI.Point(
+      1 / this.parent.scale.x,
+      1 / this.parent.scale.y,
+      // 1, 1
+    );
+    
+    while ((this.vertical && last.y + this.y + p.y * spp.y < this.endOffset.y * sp.y)
+      || (!this.vertical && last.x + this.x + p.x * spp.x < this.endOffset.x * sp.x)
     ) {
       this.addToEdge();
       last = this.children.at(-1) ?? null;
       if (last === null) { return; }
     }
 
-    while ((this.vertical && last.y + this.y > this.endOffset.y)
-      || (!this.vertical && last.x + this.x > this.endOffset.x)
+    while ((this.vertical && last.y + this.y + p.y * spp.y > this.endOffset.y * sp.y)
+      || (!this.vertical && last.x + this.x + p.x * spp.x > this.endOffset.x * sp.x)
     ) {
       this.remove(-1);
       last = this.children.at(-1) ?? null;
       if (last === null) { return; }
     }
 
+    // console.log(last.x + this.x + p.y, " =>");
     last = this.children.at(0)!;
-    while ((this.vertical && last.y + this.y > this.offset.y)
-      || (!this.vertical && last.x + this.x > this.offset.x)
+    // while ((this.vertical && last.y + this.y + p.y * spp.y > - this.offset.y * sp.y)
+    // || (!this.vertical && last.x + this.x + p.x * spp.x > - this.offset.x * sp.x)
+    while ((this.vertical && last.y + this.y + p.y * spp.y > - 0)//this.offset.y * sp.y)
+      || (!this.vertical && last.x + this.x + p.x * spp.x > - 0)//this.offset.x * sp.x)
     ) {
       this.addToEdge(false);
       last = this.children.at(0) ?? null;
       if (last === null) { return; }
     }
 
-    while ((this.vertical && last.y + this.y < 0)
-      || (!this.vertical && last.x + this.x < 0)
+    while ((this.vertical && last.y + this.y + p.y * spp.y < -this.offset.y * sp.y)
+      || (!this.vertical && last.x + this.x + p.x * spp.x < - this.offset.x * sp.x)
     ) {
       this.remove(0);
       last = this.children.at(0) ?? null;
@@ -160,7 +190,7 @@ export class Ruler extends PIXI.Sprite {
   }
 
   addLevel(newLevel: number, tail = true) {
-    console.log("New level: ", newLevel);
+    // console.log("New level: ", newLevel);
     const text = this.makeLabel(newLevel);
     const newChild = new PIXI.Text(text, new PIXI.TextStyle({ fontFamily: 'Inter', fontSize: this.fontSize, fill: this.vertical ? "#83ffff" : "#ffff83" }));
     // const newChild = new CoolBitmapText(text,
@@ -177,7 +207,7 @@ export class Ruler extends PIXI.Sprite {
     if (this.children.length > 0) {
       newChild.x = tail ? this.children.at(-1)!.x + this.offset.x : this.children.at(0)!.x - this.offset.x;
       newChild.y = tail ? this.children.at(-1)!.y + this.offset.y : this.children.at(0)!.y - this.offset.y;
-      console.log("set offset" + newChild.x + " " + newChild.y + " " + this.vertical);
+      // console.log("set offset" + newChild.x + " " + newChild.y + " " + this.vertical);
     } else {
       newChild.x = this.initOffset.x;
       newChild.y = this.initOffset.y;
@@ -190,7 +220,6 @@ export class Ruler extends PIXI.Sprite {
       this.levels.unshift(newLevel);
     }
   }
-
 
   remove(ind = 0) {
     // const last = this.children.at(ind)!;
@@ -217,50 +246,104 @@ export class Ruler extends PIXI.Sprite {
 };
 
 
-export function onDragStartRuler(event) {
-	console.log('aboba');
-	// dragTarget = event.viewport.parent.children;
-	event.viewport.parent.children.forEach(d => {
-		dragTarget.push(...d.children);
-		// dragTarget.push(d.children);
-	});
-	// console.log("dragTarget: ")
-	// console.log(dragTarget);
+export function onDragEndRuler(event) {
+  // this.alpha = 1;
+  console.log("onDragEndR");
+  console.log(event);
+  // if (Ruler.dragTarget) {
+  // app.stage.off('pointermove', onDragMove);
+  // Ruler.dragTarget.forEach(d => { d.alpha = 0.5; });
+  // while (Ruler.dragTarget.length > 0) {
+  // Ruler.dragTarget.pop();
+  // }
+  // }
+  const v = event.viewport;
 
-	lastPos = event.screen.clone();
-	// console.log("lastPos: " + lastPos);
-	// dragTarget.forEach(d => {
-	// 	if (d instanceof Render.CandlestickRenderer) {
-	// 	} else {
-	// 		d.microshift.y = event.screen.y;
-	// 		d.microshift.x = event.screen.x;
-	// 		console.log(d.microshift);
-	// 	}
-	// });
-/*
-	event.viewport.children.forEach(d => {
-		for (let i = 0; i < d.children.length; i++) {
-			const c = d.children[i];
-			console.log(d);
-			if (
-				i == d.children.length - 1 || c.y <= event.screen.y && 
-				d.y &&
-					c.y + c.height >= event.screen.y - d.y) {
-		d.selectedChildren.y = i;
-		d.microshift.y = event.global.y - d.y;
-		break;
-	}
+  // console.log(event);
+  const ch = event.viewport.children.at(-1);
+
+  const b = event.viewport.getVisibleBounds();
+  // ch.scale = v.scale;
+  // b.x = v.x;
+  // b.y = v.y;
+  // b.x = 0;
+  // b.y = 0;
+  // b.width = v.width   / v.scale.x;
+  // b.height = v.height / v.scale.y;
+  // b.width = v.width;
+  // b.height = v.height;
+  b.x = event.world.x;
+  b.y = event.world.y;
+  console.log(b);
+  event.viewport.forceHitArea = b;
+  ch.x = 0;
+  ch.y = 0;
 }
-for (let i = 0; i < d.children.length; i++) {
-	const c = d.children[i];
-	if (
-		i == d.children.length - 1 || c.x <= event.screen.x - d.x &&
-		c.x + c.width >= event.screen.x - d.x) {
-		d.selectedChildren.x = i;
-		d.icroshift.x = event.screen.x - d.x;
-		break;
-	}
-}
-	});
-*/
+
+export function onDragStartRuler(event) {
+  console.log('onDragStartRuler');
+  // dragTarget = event.viewport.parent.children;
+  // event.viewport.parent.children.forEach(d => {
+  // dragTarget.push(...d.children);
+  // dragTarget.push(d.children);
+  // });
+  // console.log("dragTarget: ")
+  // console.log(dragTarget);
+  console.log(event);
+
+  const v = event.viewport;
+
+  // console.log(event);
+  // const ch = event.viewport.children.at(-1);
+
+  const b = event.viewport.getVisibleBounds();
+  // ch.scale = v.scale;
+  // ch.x = b.x;
+  // ch.y = b.y;
+  // b.x = v.x;
+  // b.y = v.y;
+  b.x = 0;
+  b.y = 0;
+  b.width = v.width / v.scale.x;
+  b.height = v.height / v.scale.y;
+  // b.width = v.width;
+  // b.height = v.height;
+  // b.
+  // event.viewport.forceHitArea = b;
+  // lastPos = event.screen.clone();
+  // console.log("lastPos: " + lastPos);
+  // dragTarget.forEach(d => {
+  // 	if (d instanceof Render.CandlestickRenderer) {
+  // 	} else {
+  // 		d.microshift.y = event.screen.y;
+  // 		d.microshift.x = event.screen.x;
+  // 		console.log(d.microshift);
+  // 	}
+  // });
+  /*
+    event.viewport.children.forEach(d => {
+      for (let i = 0; i < d.children.length; i++) {
+        const c = d.children[i];
+        console.log(d);
+        if (
+          i == d.children.length - 1 || c.y <= event.screen.y && 
+          d.y &&
+            c.y + c.height >= event.screen.y - d.y) {
+      d.selectedChildren.y = i;
+      d.microshift.y = event.global.y - d.y;
+      break;
+    }
+  }
+  for (let i = 0; i < d.children.length; i++) {
+    const c = d.children[i];
+    if (
+      i == d.children.length - 1 || c.x <= event.screen.x - d.x &&
+      c.x + c.width >= event.screen.x - d.x) {
+      d.selectedChildren.x = i;
+      d.icroshift.x = event.screen.x - d.x;
+      break;
+    }
+  }
+    });
+  */
 }

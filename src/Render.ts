@@ -1,6 +1,7 @@
 import * as PIXI from 'pixi.js';
 import * as Candles from './Candles';
 import * as Ruler from './Ruler';
+import * as Utils from './Utils';
 
 export class CandlestickRenderer extends PIXI.Sprite {
   private app: PIXI.Sprite;
@@ -13,6 +14,7 @@ export class CandlestickRenderer extends PIXI.Sprite {
   initOffset: PIXI.Point;
   endOffset: PIXI.Point;
   pairRuler: Ruler.Ruler[];
+  fontSize = 15;
 
   constructor(
     app: PIXI.Sprite,
@@ -35,10 +37,13 @@ export class CandlestickRenderer extends PIXI.Sprite {
     this.x = initOffset.x;
     this.y = initOffset.y;
     this.pairRuler = pairRulers;
+    Utils.addBoundingRect(this);
+    this.interactive = false;
   }
 
   renderOrders(data, scale = new PIXI.Point(1, 1), shift = new PIXI.Point(0, 0)) {
     const orderHeight = 10; // Set the height of the order lines
+    // console.log(orders);
 
     for (let i = 0; i < data.length; i++) {
       const order = data[i];
@@ -47,13 +52,28 @@ export class CandlestickRenderer extends PIXI.Sprite {
         (order.cancel_time || order.fill_time) - shift.x,
         // You can add a default value here if necessary.
       ) * scale.x :
-      1e9;
+        1e9;
       const y = (order.price - shift.y) * scale.y;
-      const color = order.fill_time ? 0x00FF00 : 0xFF0000; // Green for filled orders, red for canceled orders
+      const color = order.amount > 0 ? 0x00FF00 : 0xFF0000; // Green for filled orders, red for canceled orders
 
-      const orderLine = this.createLine(x1, y, x2, y, color);
+      const orderLine = Utils.createLine(x1, y, x2, y, color);
+      const text = Utils.objectToStringWithSeparator(order, "|", [
+        'amount',
+        'price',
+        'time',
+      ]);
+      const newChild = new PIXI.Text(text, new PIXI.TextStyle({
+        fontFamily: 'Inter',
+        fontSize: this.fontSize,
+        fill: color
+      }));
+      newChild.x = x1;
+      newChild.y = y;
+      newChild.scale.set(0.5);
+
 
       this.addChild(orderLine);
+      this.addChild(newChild);
     }
   }
 
@@ -71,9 +91,9 @@ export class CandlestickRenderer extends PIXI.Sprite {
       const color = candle.open < candle.close ? 0x00FF00 : 0xFF0000;
       const _mult = 0.1;
 
-      const candleBody = this.createRect((x - shift.x) * scale.x, (candle.open - shift.y) * scale.y, candleWidth * scale.x, (candle.close - candle.open) * scale.y, color);
+      const candleBody = Utils.createRect((x - shift.x) * scale.x, (candle.open - shift.y) * scale.y, candleWidth * scale.x, (candle.close - candle.open) * scale.y, color);
       const x_mid = (x + candleWidth / 2 - shift.x) * scale.x;
-      const candleWick = this.createLine(
+      const candleWick = Utils.createLine(
         x_mid,
         (candle.high - shift.y) * scale.y,
         x_mid,
@@ -85,21 +105,6 @@ export class CandlestickRenderer extends PIXI.Sprite {
     }
   }
 
-  private createRect(x: number, y: number, width: number, height: number, color: number): PIXI.Graphics {
-    const rect = new PIXI.Graphics();
-    rect.beginFill(color);
-    rect.drawRect(x, y, width, height);
-    rect.endFill();
-    return rect;
-  }
-
-  private createLine(x1: number, y1: number, x2: number, y2: number, color: number): PIXI.Graphics {
-    const line = new PIXI.Graphics();
-    line.lineStyle(1, color);
-    line.moveTo(x1, y1);
-    line.lineTo(x2, y2);
-    return line;
-  }
 
   toLocal(...params: any[]) {
     // params[0].x *= this.shiftMask.x;

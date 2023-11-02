@@ -3,15 +3,13 @@ import * as Candles from './Candles';
 import * as Utils from './Utils';
 import * as Render from './Render';
 import * as Sequelize from "sequelize";
-import { Buffer } from 'buffer';
-import Process from 'process';
 import { Viewport } from "pixi-viewport";
 import { CoolBitmapText, hackBitmapTextDisableMips } from "./CoolBitmapText";
-globalThis.process = Process;
-globalThis.Buffer = Buffer;
 import { Pool, QueryConfig, QueryResult } from 'pg';
 import { onDragMoveDefault } from './Draggable';
 import * as Ruler from './Ruler';
+import * as Overrides from './Overrides';
+import { ThroughEventBoundary } from './ThroughEventBoundary';
 // export let dragTarget: PIXI.Sprite[] = [];
 
 // const interworff = new URL('/interwoff.fnt', import.meta.url);
@@ -23,17 +21,42 @@ const app = new PIXI.Application({
 });
 
 document.body.appendChild(app.view);
-
 app.stage.x = 0;
 app.stage.y = 0;
 
+let _lockX = 0;
+let _lockY = 0;
+let _lastRuler = false;
+
 
 function testf(event) {
+  const v = event.viewport;
+  console.log(viewports);
+  console.log(v.parent.getChildIndex(v));
+  const v0 = viewports[0];
+  const vh = viewports[1];
+  const vv = viewports[2];
+  const c0 = v.children[0];
+  if (!_lastRuler) {
+    vh.scale.set(v0.scale.x);
+    vh.x = v0.x;
+    // vh.y = 0;
+    vv.y = v0.y;
+    // vv.x = 0;
+    vv.scale.set(v0.scale.y);
+  }
+  _lastRuler = false;
+  vh.children[0].fill();
+  vv.children[0].fill();
+
+  // console.log(v.parent.getChildIndex(v));
+  // console.log(v.scale);
+
   // console.log('abioba');
   // console.log(this);
   // console.log(event.viewport);
   // console.log(event.viewport);
-  console.log(event);
+  // console.log(event);
   // console.log(dragTarget);
   // console.log(event.viewport.parent.children);
   // dragTarget.forEach(element => {
@@ -53,8 +76,13 @@ function testf(event) {
   // c.y = event.screen.y;
   // });
   // event.stopPropagate();
+  
+  // const b = event.viewport.getVisibleBounds();
+  // b.x = 0;
+  // b.y = 0;
+  // event.viewport.forceHitArea = b;
 
-  event.viewport.parent.children.forEach(c => {
+  // event.viewport.parent.children.forEach(c => {
     // c.moved(event);
     // c.children.forEach(ch => {
     //   // ch.moved(event)
@@ -69,19 +97,19 @@ function testf(event) {
     //     ch, ch.position
     //     );
     // });
-    console.log(Ruler.lastPos.x, Ruler.lastPos.y);
-    console.log(event.viewport.x, event.viewport.y);
-    console.log("Child::");
+    // console.log(Ruler.lastPos.x, Ruler.lastPos.y);
+    // console.log(event.viewport.x, event.viewport.y);
+    // console.log("Child::");
     // console.log(c);
     // c.moveCorner(
-      // event.viewport.position.x - Ruler.lastPos.x,
-      // -event.viewport.position.x,
-      // event.screen.y - Ruler.lastPos.y
-      // 0
+    // event.viewport.position.x - Ruler.lastPos.x,
+    // -event.viewport.position.x,
+    // event.screen.y - Ruler.lastPos.y
+    // 0
     // );
     // c.position.x = event.viewport.position.x * caches.shiftMask.x;
     // c.position.y = event.viewport.position.y * caches.shiftMask.y;
-  });
+  // });
   //   }
   //   // if (element.vertical !== undefined){
   //   // }
@@ -93,14 +121,78 @@ function testf(event) {
 }
 
 function testf2(event) {
+  // viewports[]
   // console.log('abioba');
   // console.log(this);
   // console.log(event.viewport);
   // console.log(event.viewport);
   // console.log(event)o;
-  console.log("TESTF2");
+  // console.log("TESTF2");
   // console.log(event);
 
+  const v = event.viewport;
+  console.log(viewports);
+  console.log(v.parent.getChildIndex(v));
+  const v0 = viewports[0];
+  const vh = viewports[1];
+  const vv = viewports[2];
+  const c0 = v.children[0];
+
+  // if (c0.vertical !== undefined) {
+    // v0.scale.x = vv.scale.x;
+    // v0.scale.y = vh.scale.y;
+    // console.log("scale set ", vv.scale.x, vh.scale.y);
+    // v0.scale.set(vv.scale.x, vh.scale.y);
+  // }
+  // vh.scale.set(v0.scale.x);
+  v0.x = vh.x;
+  v0.y = vv.y;
+  // vv.scale.set(v0.scale.y);
+  v0.scale.set(vh.scale.x, vv.scale.y);
+  _lastRuler = true;
+
+
+  // vv.x = 0;
+  // vh.y = 0;
+  // if (v.children[0].vertical) {
+  //   v0.y = v.y;
+  //   vv.x = v0.x;
+  // } else {
+  //   v0.x = v.x;
+  //   vh.y = v0.y
+  // }
+  
+  // console.log(ch)
+  // v.top = 0;
+  // v.left = 0;
+  // ch.right = ch.worldScreenWidth;
+  // ch.bottom = ch.worldScreenHeight;
+  
+  // const ch = event.viewport.children.at(-1);
+  // ch.scale = v.scale;
+
+  // console.log("CH", ch);
+  
+  const b = event.viewport.getVisibleBounds();
+  // ch.x = b.x;
+  // ch.y = b.y;
+  // b.x = v.x;
+  // b.y = v.y;
+  
+  b.x = 0;
+  b.y = 0;
+  // b.width = v.width   / v.scale.x;
+  // b.height = v.height / v.scale.y;
+  
+  // b.width = v.width;
+  // b.height = v.height;
+  // b.
+  event.viewport.forceHitArea = b;
+  // event.viewport.forceHitArea = null;
+  // event.viewport.forceHitArea = null;
+
+  // event.viewport.children.at(-1).x = 0;
+  // ch.position.set(0,0);
   // console.log(event.viewport);
   // dragTarget.forEach(element => {
   //   let i = 0;
@@ -112,7 +204,14 @@ function testf2(event) {
   //       !element.vertical ? - event.viewport.y : 0,
   //       ),
   //       element,element.position);
-  // event.viewport.parent.children.forEach(c => {
+  v.children.forEach(c => {
+    try{
+      if (c.fill) {
+        // console.log(c);
+        c.fill();
+      }
+    } catch (e) {
+    }
   // c.moved(event);
   // console.log("Child::");
   // console.log(c.children);
@@ -122,7 +221,7 @@ function testf2(event) {
   // console.log(mask);
   // c.position.x = event.viewport.position.x * c.shiftMask.x;
   // c.position.y = event.viewport.position.y * c.shiftMask.y;
-  // });
+  });
 
   //   }
   //   // if (element.vertical !== undefined){
@@ -133,6 +232,36 @@ function testf2(event) {
   // console.log(d.,microshift.x);
   // });
 }
+
+function defcb(st, event) {
+  console.log(st, event);
+  // const v = event.viewport;
+  // console.log(v.x, v.y, v.width, v.height);
+  // console.log(v.getVisibleBounds())
+  // console.log(event.clientY);
+  // v.left = -600;
+  // v.right = -400;
+  // v.hitArea = new PIXI.Rectangle(v.x, v.y, v.width, v.height);
+  // v.hitArea.x = v.x;
+  // v.hitArea.y = v.y;
+  // v.hitArea.width = v.width;
+  // v.hitArea.height = v.height;
+}
+
+// app.renderer.events.rootBoundary = true;
+// app.renderer.events.rootBoundary = new ThroughEventBoundary(app.stage);
+// console.log(app.renderer.events);
+// monitorEvents(window);
+
+const pp = new PIXI.Container();
+pp.width = window.innerWidth;
+pp.height = window.innerHeight;
+pp.interactive = true;
+Utils.addBoundingRect(pp, 10, 0x00ff00, false);
+app.stage.addChild(pp);
+
+console.log(pp);
+
 type DirType = "all" | 'x' | 'y';
 const viewports = new Array<DirType>("all", 'x', 'y').map((direction, i) => {
   const viewport = new Viewport({
@@ -140,23 +269,87 @@ const viewports = new Array<DirType>("all", 'x', 'y').map((direction, i) => {
     screenHeight: i !== 1 ? window.innerHeight : 200,
     worldWidth: i !== 2 ? 1000 : 200,
     worldHeight: i !== 1 ? 1000 : 200,
-    events: app.renderer.events
-    // interaction: app.renderer.events
+    events: app.renderer.events,
   })
-    .on('moved', i === 0 ? testf : testf2)
-    .on('drag-start', Ruler.onDragStartRuler);
+  // .on('wheel', i === 0 ? testf : Ruler.onDragStartRuler)
+  // .on('moved', i === 0 ? testf : Ruler.onDragStartRuler)
 
-  viewport.drag().pinch().wheel().decelerate()
-    // .clamp({
-    //   direction
-    // });
-  app.stage.addChild(viewport);
-  viewport.zIndex = i;
-
-  // console.log(viewport);
+  .on('moved', i === 0 ? testf : testf2)
+  // .on('wheel', i === 0 ? testf : testf2)
+  // .on('drag-start', Ruler.onDragStartRuler)
+  // .on('drag-end', Ruler.onDragEndRuler)
+  // .on("clicked", (event) => { defcb("clicked", event)})
+  // .on("drag-start", (event) => { defcb("drag-start", event)})
+  // .on("drag-end", (event) => { defcb("drag-end", event)})
+  // .on("drag-remove", (event) => { defcb("drag-remove", event)})
+  // .on("pinch-start", (event) => { defcb("pinch-start", event)})
+  // .on("pinch-end", (event) => { defcb("pinch-end", event)})
+  // .on("pinch-remove", (event) => { defcb("pinch-remove", event)})
+  // .on("snap-start", (event) => { defcb("snap-start", event)})
+  // .on("snap-end", (event) => { defcb("snap-end", event)})
+  // .on("snap-remove", (event) => { defcb("snap-remove", event)})
+  // .on("snap-zoom-start", (event) => { defcb("snap-zoom-start", event)})
+  // .on("snap-zoom-end", (event) => { defcb("snap-zoom-end", event)})
+  // .on("snap-zoom-remove", (event) => { defcb("snap-zoom-remove", event)})
+  // .on("bounce-x-start", (event) => { defcb("bounce-x-start", event)})
+  // .on("bounce-x-end", (event) => { defcb("bounce-x-end", event)})
+  // .on("bounce-y-start", (event) => { defcb("bounce-y-start", event)})
+  // .on("bounce-y-end", (event) => { defcb("bounce-y-end", event)})
+  // .on("bounce-remove", (event) => { defcb("bounce-remove", event)})
+  // .on("wheel-start", (event) => { defcb("wheel-start", event)})
+  // .on("wheel-remove", (event) => { defcb("wheel-remove", event)})
+  // .on("wheel-scroll", (event) => { defcb("wheel-scroll", event)})
+  // .on("wheel-scroll-remove", (event) => { defcb("wheel-scroll-remove", event)})
+  // .on("mouse-edge-start", (event) => { defcb("mouse-edge-start", event)})
+  // .on("mouse-edge-end", (event) => { defcb("mouse-edge-end", event)})
+  // .on("mouse-edge-remove", (event) => { defcb("mouse-edge-remove", event)})
+  // .on("moved", (event) => { defcb("moved", event)})
+  // .on("moved-end", (event) => { defcb("moved-end", event)})
+  // .on("zoomed", (event) => { defcb("zoomed", event)})
+  // .on("zoomed-end", (event) => { defcb("zoomed-end", event)})
+  // .on("update", (event) => { defcb("update", event)})
+  viewport
+  .drag()
+  .pinch()
+  .wheel({
+    // smooth: 2,
+    // interrupt: false
+    // axis: direction
+  })
+  // .snapZoom()
+  .decelerate()
+  viewport.plugins.plugins['drag']!.move = Overrides.move;
+  // console.log(viewport.plugins.plugins);
+  pp.addChild(viewport);
+  // viewport.zIndex = i;
   return viewport;
-  // viewport.moveCenter(1000,1000);
 })
+
+// viewports[0].on("moved", (event) => {
+  // console.log(viewports[0].x, viewports[0].y);
+  // console.log(viewports[0].top, viewports[0].left, viewports[0].right, viewports[0].bottom);
+  // viewports[1].emit('moved', {
+    // event: event,
+    // viewport: viewports[1]
+  // });
+
+// });
+// let ququ: number[] = [];
+// viewports.forEach((viewport, i) => {
+  // if (i === 0) { return; }
+  // viewport.on("moved", (event) => { 
+    // viewports[0].emit("moved", event);
+    // viewports[0].x = event.viewport.x;
+    // const b = viewports[0].getVisibleBounds();
+    // b.x = 0;
+    // b.y = 0;
+    // viewports[0].forceHitArea = b;
+    // viewports[0].forceHitArea.x = event.viewport.x;
+    // viewports.forEach(viewport => {
+    //   viewport.emit("moved", event);
+    // })
+  // });
+// })
 
 window.WebFontConfig = {
   google: {
@@ -273,16 +466,6 @@ async function init() {
     }
   }
 
-  function onDragEndRuler() {
-    // this.alpha = 1;
-    if (Ruler.dragTarget) {
-      // app.stage.off('pointermove', onDragMove);
-      Ruler.dragTarget.forEach(d => { d.alpha = 1; });
-      while (Ruler.dragTarget.length > 0) {
-        dragTarget.pop();
-      }
-    }
-  }
 
   function onDragEnd(event) {
     // this.alpha = 1;
@@ -300,10 +483,17 @@ async function init() {
     }
   }
 
+  const render = new Render.CandlestickRenderer(
+    viewports[0],
+    onDragStart,
+    onDragEnd,
+    new PIXI.Point(0, 0),
+    new PIXI.Point(2000, 1200)
+  );
   const ruler = new Ruler.Ruler(
     viewports[1],
     onDragStart,
-    onDragEndRuler,
+    Ruler.onDragEndRuler,
     false,
     new PIXI.Point(200, 0),
     new PIXI.Point(0, 5),
@@ -316,7 +506,7 @@ async function init() {
   const rulerH = new Ruler.Ruler(
     viewports[2],
     onDragStart,
-    onDragEndRuler,
+    Ruler.onDragEndRuler,
     true,
     new PIXI.Point(0, 200),
     new PIXI.Point(5, 0),
@@ -327,16 +517,9 @@ async function init() {
     new PIXI.Point(0, 1)
   );
 
-  const render = new Render.CandlestickRenderer(
-    viewports[0],
-    onDragStart,
-    onDragEnd,
-    new PIXI.Point(0, 0),
-    new PIXI.Point(2000, 1200)
-  );
 
   const symbol = 'BLZUSDT'; // Replace with the desired trading pair
-  const interval = '1m';    // Replace with the desired interval (e.g., 1m, 5m, 1h, 1d)
+  const interval = '15m';    // Replace with the desired interval (e.g., 1m, 5m, 1h, 1d)
   const limit = 1000;       // The maximum number of data points you want to retrieve
 
   try {
