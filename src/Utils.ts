@@ -118,3 +118,33 @@ export function createLine(x1: number, y1: number, x2: number, y2: number, color
 // const timestamp = 1634462096; // Replace this with your timestamp
 // const formattedUtcString = timestampToFormattedUtcString(timestamp, 'YYYY-MM-DD HH:mm:ss');
 // console.log(formattedUtcString);
+
+
+export function calculateMinMax<T>(data: T[]): Map<string, { min: number; max: number }> {
+  const minMaxMap = new Map<string, { min: number; max: number }>();
+
+  if (data.length === 0) return minMaxMap; // Return an empty map if data is empty.
+
+  const fields = Object.keys(data[0]);
+
+  for (const field of fields) {
+    // Check if the first item's field value is numeric by attempting to parse it
+    if (!isNaN(parseFloat(data[0][field])) && isFinite(data[0][field])) {
+      // Get all numeric values for the current field
+      const numericValues = data
+        .map(item => item[field])
+        .filter(value => !isNaN(parseFloat(value)) && isFinite(value))
+        .map(Number);
+
+      if (numericValues.length > 0) {
+        const minValue = Math.min(...numericValues);
+        const maxValue = Math.max(...numericValues);
+
+        minMaxMap.set(field, { min: minValue, max: maxValue });
+      }
+    }
+  }
+
+  console.log("min max", minMaxMap);
+  return minMaxMap;
+}
