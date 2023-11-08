@@ -94,25 +94,6 @@ export class BinanceCandlestickFetcher {
       throw new Error(`Failed to fetch candlestick data: ${error.message}`);
     }
   }
-
-  calculateMinMax(candlestickData: CandlestickData[]): Map<string, { min: number; max: number }> {
-    const minMaxMap = new Map<string, { min: number; max: number }>();
-
-    const fields = Object.keys(candlestickData[0]);
-
-    for (const field of fields) {
-      // Skip the 'symbol' field
-      if (field === 'symbol') continue;
-
-      const values = candlestickData.map((item) => parseFloat(item[field]));
-      const minValue = Math.min(...values);
-      const maxValue = Math.max(...values);
-
-      minMaxMap.set(field, { min: minValue, max: maxValue });
-    }
-
-    return minMaxMap;
-  }
 }
 
 

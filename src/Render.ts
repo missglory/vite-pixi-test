@@ -2,46 +2,32 @@ import * as PIXI from 'pixi.js';
 import * as Candles from './Candles';
 import * as Ruler from './Ruler';
 import * as Utils from './Utils';
+import { Viewport } from 'pixi-viewport';
 
-export class CandlestickRenderer extends PIXI.Sprite {
-  private app: PIXI.Sprite;
-  container: PIXI.Container;
+export class CandlestickRenderer extends PIXI.Container {
   offset = new PIXI.Point(0, 0);
   selectedChildren = new PIXI.Point(0, 0);
   microshift = new PIXI.Point(0, 0);
   shiftMask = new PIXI.Point(0, 0);
   vertical = null;
-  initOffset: PIXI.Point;
-  endOffset: PIXI.Point;
-  pairRuler: Ruler.Ruler[];
   fontSize = 15;
+  glue: PIXI.Container;
 
   constructor(
-    app: PIXI.Sprite,
-    onDragStart,
-    onDragEnd,
-    initOffset = new PIXI.Point(0, 0),
-    endOffset = new PIXI.Point(0, 0),
-    pairRulers: Ruler.Ruler[] = []
+    app: Viewport,
   ) {
     super();
-    this.app = app;
-    this.app.addChild(this);
-
-    // this.cursor = 'pointer';
-    // this.eventMode = 'static';
-    // this.on('pointerdown', onDragStart, this);
-    // this.on('pointerup', onDragEnd);
-    this.initOffset = initOffset;
-    this.endtOffset = endOffset;
-    this.x = initOffset.x;
-    this.y = initOffset.y;
-    this.pairRuler = pairRulers;
-    Utils.addBoundingRect(this);
+    app.addChild(this);
+    app.on("moved", testf);
+    // this.x = initOffset.x;
+    // this.y = initOffset.y;
+    // this.pairRuler = pairRulers;
+    // Utils.addBoundingRect(this);
     this.interactive = false;
+    this.glue = this.parent.parent;
   }
 
-  renderOrders(data, scale = new PIXI.Point(1, 1), shift = new PIXI.Point(0, 0)) {
+  renderOrders(data: Order[], scale = new PIXI.Point(1, 1), shift = new PIXI.Point(0, 0)) {
     const orderHeight = 10; // Set the height of the order lines
     // console.log(orders);
 
@@ -104,23 +90,27 @@ export class CandlestickRenderer extends PIXI.Sprite {
       this.addChild(candleBody, candleWick);
     }
   }
+}
 
-
-  toLocal(...params: any[]) {
-    // params[0].x *= this.shiftMask.x;
-    // params[0].y *= this.shiftMask.y;
-
-    // console.log(this.parent);
-    // Pass the modified argument to this.parent.toLocal
-    // this.parent.toLocal(modifiedFirstArg, ...params.slice(1));
-    this.parent.toLocal(...params);
-    // this.children.forEach(child => {
-    // child.x = params[0];
-    // child.y = params[1];
-    // child.toLocal(...params);
-    // });
-
-    // this.fill();
+function testf(event) {
+  const v = event.viewport;
+  const pp = v.parent.parent;
+  const ch = pp.children;
+  const rx = ch[1].children;
+  const ry = ch[2].children;
+  if (!pp.lastRuler) {
+    rx.forEach((c) => {
+      c.scale.set(v.scale.x, v.scale.y);
+      c.x = v.x;
+      c.y = 0;
+    });
+    ry.forEach((c) => {
+      c.scale.set(v.scale.x, v.scale.y);
+      c.y = v.y;
+      c.x = 0;
+    });
+  } else {
+    v.scale.set(rx[0].scale.x, ry[0].scale.y);
   }
-
+  pp.lastRuler = false;
 }

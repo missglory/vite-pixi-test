@@ -2,11 +2,12 @@ import * as PIXI from 'pixi.js';
 import * as Utils from './Utils';
 import * as Render from './Render';
 import { Viewport } from "pixi-viewport";
+import * as Globals from './Globals';
 
 export let dragTarget: PIXI.Sprite[] = [];
 export let lastPos = new PIXI.Point();
 
-export class Ruler extends PIXI.Sprite {
+export class Ruler extends PIXI.Container {
   initOffset = new PIXI.Point(0, 0);
   endOffset = new PIXI.Point(0, 0);
   vertical = true;
@@ -21,11 +22,9 @@ export class Ruler extends PIXI.Sprite {
   shiftMask = new PIXI.Point(0, 0);
   start = 0;
   end = 0;
-  pairRuler: Ruler[];
+  glue: PIXI.Container;
   constructor(
-    parent,
-    onDragStart,
-    onDragEnd,
+    parent: Viewport,
     vertical = true,
     offset: PIXI.Point = new PIXI.Point(0, 0),
     initOffset: PIXI.Point = new PIXI.Point(0, 0),
@@ -34,7 +33,6 @@ export class Ruler extends PIXI.Sprite {
     endOffset = new PIXI.Point(0, 0),
     fontSize = 26,
     shiftMask = new PIXI.Point(1, 1),
-    pairRulers: Ruler[] = []
   ) {
     super();
 
@@ -44,6 +42,7 @@ export class Ruler extends PIXI.Sprite {
     // this.on('pointerup', onDragEnd);
     // this.on('pointerleave', onDragEnd);
     parent.addChild(this);
+    parent.on('moved', testf2)
     this.initOffset = initOffset.clone();
     this.endOffset = endOffset.clone();
     console.log("parent", parent);
@@ -59,18 +58,16 @@ export class Ruler extends PIXI.Sprite {
     this.endValue = startValue;
     this.period = period;
     this.shiftMask = shiftMask;
-    this.pairRuler = pairRulers;
-    // Utils.addBoundingRect(this);
-
     this.fill();
+    this.glue = parent.parent.parent;
   }
 
-  toLocal(...params: any[]) {
-    params[0].x *= this.shiftMask.x;
-    params[0].y *= this.shiftMask.y;
-    // console.log("test")
-    this.parent.toLocal(...params);
-    this.fill();
+  bindLayer(v: Viewport) {
+    this.boundLayers.push(v);
+  }
+
+  bindLayers(v: Viewport[]) {
+    this.boundLayers.push(...v);
   }
 
   fill() {
@@ -98,7 +95,7 @@ export class Ruler extends PIXI.Sprite {
       1 / this.parent.scale.y,
       // 1, 1
     );
-    
+
     while ((this.vertical && last.y + this.y + p.y * spp.y < this.endOffset.y * sp.y)
       || (!this.vertical && last.x + this.x + p.x * spp.x < this.endOffset.x * sp.x)
     ) {
@@ -306,44 +303,43 @@ export function onDragStartRuler(event) {
   b.y = 0;
   b.width = v.width / v.scale.x;
   b.height = v.height / v.scale.y;
-  // b.width = v.width;
-  // b.height = v.height;
-  // b.
-  // event.viewport.forceHitArea = b;
-  // lastPos = event.screen.clone();
-  // console.log("lastPos: " + lastPos);
-  // dragTarget.forEach(d => {
-  // 	if (d instanceof Render.CandlestickRenderer) {
-  // 	} else {
-  // 		d.microshift.y = event.screen.y;
-  // 		d.microshift.x = event.screen.x;
-  // 		console.log(d.microshift);
-  // 	}
-  // });
-  /*
-    event.viewport.children.forEach(d => {
-      for (let i = 0; i < d.children.length; i++) {
-        const c = d.children[i];
-        console.log(d);
-        if (
-          i == d.children.length - 1 || c.y <= event.screen.y && 
-          d.y &&
-            c.y + c.height >= event.screen.y - d.y) {
-      d.selectedChildren.y = i;
-      d.microshift.y = event.global.y - d.y;
-      break;
+}
+
+
+function testf2(event) {
+  const v = event.viewport;
+  // console.log(v.parent.getChildIndex(v));
+  // const c0 = v.children[0];
+  // c0.glue.lastRuler = true;
+  const pp = v.parent.parent;
+  pp.lastRuler = true;
+  const ch = pp.children;
+  const rx = ch[1].children[0];
+  const ry = ch[2].children[0];
+  ch[0].children.forEach((c) => {
+    c.scale.set(rx.scale.x, ry.scale.y);
+    c.x = rx.x;
+    c.y = ry.y;
+  });
+  // ch[2].children.forEach((c) => { c.y = v.y; });
+  // ch[1].children.forEach((c) => { c.scale.set(v.scale.x, v.scale.y); });
+  // ch[2].children.forEach((c) => { c.scale.set(v.scale.x, v.scale.y); });
+
+  const b = event.viewport.getVisibleBounds();
+  // ch.x = b.x;
+  // ch.y = b.y;
+  // b.x = v.x;
+  // b.y = v.y;
+  b.x = 0;
+  b.y = 0;
+  event.viewport.forceHitArea = b;
+  v.children.forEach(c => {
+    try {
+      if (c.fill) {
+        // console.log(c);
+        c.fill();
+      }
+    } catch (e) {
     }
-  }
-  for (let i = 0; i < d.children.length; i++) {
-    const c = d.children[i];
-    if (
-      i == d.children.length - 1 || c.x <= event.screen.x - d.x &&
-      c.x + c.width >= event.screen.x - d.x) {
-      d.selectedChildren.x = i;
-      d.icroshift.x = event.screen.x - d.x;
-      break;
-    }
-  }
-    });
-  */
+  });
 }
